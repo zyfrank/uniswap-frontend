@@ -11,7 +11,7 @@ import { isAddress } from '../utils'
 
 const Swap = lazy(() => import('./Swap'))
 const Send = lazy(() => import('./Send'))
-const Pool = lazy(() => import('./Pool'))
+//const Pool = lazy(() => import('./Pool'))
 
 const AppWrapper = styled.div`
   display: flex;
@@ -88,15 +88,6 @@ export default function App() {
                             return <Redirect to={{ pathname: '/send' }} />
                           }
                         }}
-                      />
-                      <Route
-                        path={[
-                          '/add-liquidity',
-                          '/remove-liquidity',
-                          '/create-exchange',
-                          '/create-exchange/:tokenAddress?'
-                        ]}
-                        component={Pool}
                       />
                       <Redirect to="/swap" />
                     </Switch>

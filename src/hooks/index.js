@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react'
 import { useWeb3Context } from 'web3-react'
 
 import ERC20_ABI from '../constants/abis/erc20'
-import { getContract, getFactoryContract, getExchangeContract, isAddress } from '../utils'
+import { getContract, getFactoryContract, getExchangeContract, getAtomicSynthetixUniswapConverterContract, isAddress } from '../utils'
 import copy from 'copy-to-clipboard'
 
 // modified from https://usehooks.com/useDebounce/
@@ -131,6 +131,18 @@ export function useExchangeContract(exchangeAddress, withSignerIfPossible = true
       return null
     }
   }, [exchangeAddress, library, withSignerIfPossible, account])
+}
+
+export function useAtomicSynthetixUniswapConverterContract(converterAddress, withSignerIfPossible = true) {
+  const { library, account } = useWeb3Context()
+
+  return useMemo(() => {
+    try {
+      return getAtomicSynthetixUniswapConverterContract(converterAddress, library, withSignerIfPossible ? account : undefined)
+    } catch {
+      return null
+    }
+  }, [converterAddress, library, withSignerIfPossible, account])
 }
 
 export function useCopyClipboard(timeout = 500) {

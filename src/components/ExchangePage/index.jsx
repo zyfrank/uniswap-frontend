@@ -14,7 +14,7 @@ import OversizedPanel from '../OversizedPanel'
 import TransactionDetails from '../TransactionDetails'
 import ArrowDown from '../../assets/svg/SVGArrowDown'
 import { amountFormatter, calculateGasMargin } from '../../utils'
-import { useExchangeContract } from '../../hooks'
+import { useExchangeContract, useAtomicSynthetixUniswapConverterContract } from '../../hooks'
 import { useTokenDetails } from '../../contexts/Tokens'
 import { useTransactionAdder } from '../../contexts/Transactions'
 import { useAddressBalance, useExchangeReserves } from '../../contexts/Balances'
@@ -27,6 +27,15 @@ const OUTPUT = 1
 const ETH_TO_TOKEN = 0
 const TOKEN_TO_ETH = 1
 const TOKEN_TO_TOKEN = 2
+
+const ETH_TO_SETH = 3
+const SETH_TO_ETH = 4
+const ETH_TO_OTHERSTOKEN = 5
+const OTHERSTOKEN_TO_ETH = 6
+const STOKEN_TO_STOKEN = 7 
+
+const SETH_UNISWAP_EXCHANGE_ADDR = '0x8779C708e2C3b1067de9Cd63698E4334866c691C'
+const ATOMIC_CONVERT_ADDR = '0x8779C708e2C3b1067de9Cd63698E4334866c691C'
 
 // denominated in bips
 const ALLOWED_SLIPPAGE_DEFAULT = 100
@@ -95,12 +104,26 @@ function calculateSlippageBounds(value, token = false, tokenAllowedSlippage, all
 function getSwapType(inputCurrency, outputCurrency) {
   if (!inputCurrency || !outputCurrency) {
     return null
-  } else if (inputCurrency === 'ETH') {
-    return ETH_TO_TOKEN
-  } else if (outputCurrency === 'ETH') {
-    return TOKEN_TO_ETH
-  } else {
-    return TOKEN_TO_TOKEN
+  }else if (inputCurrency === 'ETH') {
+    if (outputCurrency ==='sETH'){
+      return ETH_TO_SETH
+    }else {
+      return ETH_TO_OTHERSTOKEN
+    }
+  }else {
+    if (inputCurrency === 'sETH') {
+      if (outputCurrency ==='ETH') {
+        return SETH_TO_ETH
+      }else {
+        return STOKEN_TO_STOKEN
+      }
+    }else {
+      if (outputCurrency ==='ETH') {
+        return OTHERSTOKEN_TO_ETH
+      }else {
+        return STOKEN_TO_STOKEN
+      }
+    }
   }
 }
 
@@ -273,6 +296,9 @@ export default function ExchangePage({ initialCurrency, sending }) {
 
   const inputExchangeContract = useExchangeContract(inputExchangeAddress)
   const outputExchangeContract = useExchangeContract(outputExchangeAddress)
+  const sEthExchangeContract = useExchangeContract(SETH_UNISWAP_EXCHANGE_ADDR)
+  const atomicConverterContract = useAtomicSynthetixUniswapConverterContract(ATOMIC_CONVERT_ADDR)
+
   const contract = swapType === ETH_TO_TOKEN ? outputExchangeContract : inputExchangeContract
 
   // get input allowance
@@ -517,6 +543,106 @@ export default function ExchangePage({ initialCurrency, sending }) {
         action: sending ? 'TransferInput' : 'SwapInput'
       })
 
+      if (swapType === ETH_TO_SETH) {
+        estimate = atomicConverterContract.estimate.ethToSethInput
+        method = atomicConverterContract.ethToSethInput
+        args = [dependentValueMinumum, deadline, recipient.address]
+        value = independentValueParsed
+      } else if (swapType === SETH_TO_ETH) {
+        estimate = atomicConverterContract.estimate.sEthToEthInput
+        method = atomicConverterContract.sEthToEthInput
+        args = [independentValueParsed, dependentValueMinumum, deadline, recipient.address]
+        value = ethers.constants.Zero
+      } else if (swapType === ETH_TO_OTHERSTOKEN) {
+        estimate = sending ? atomicConverterContract.estimate.ethToOtherSTokenTransferInput : atomicConverterContract.estimate.ethToOtherSTokenSwapInput
+        method = sending ? atomicConverterContract.ethToOtherSTokenTransferInput : atomicConverterContract.ethToOtherSTokenSwapInput
+        args = sending ? [dependentValueMinumum, deadline, recipient.address] : [dependentValueMinumum, deadline]
+        value = independentValueParsed
+      }else if (swapType === OTHERSTOKEN_TO_ETH) {
+        estimate = sending ? atomicConverterContract.estimate.otherSTokenToEthTransferInput : atomicConverterContract.estimate.otherSTokenToEthSwapInput
+        method = sending ? atomicConverterContract.otherSTokenToEthTransferInput : atomicConverterContract.otherSTokenToEthSwapInput
+        args = sending
+          ? [independentValueParsed, dependentValueMinumum, deadline, recipient.address]
+          : [independentValueParsed, dependentValueMinumum, deadline]
+        value = ethers.constants.Zero
+      }else if (swapType === STOKEN_TO_STOKEN){
+        estimate = sending ? atomicConverterContract.estimate.sTokenToStokenTransferInput : atomicConverterContract.estimate.sTokenToStokenSwapInput
+        method = sending ? atomicConverterContract.sTokenToStokenTransferInput : atomicConverterContract.sTokenToStokenSwapInput
+        args = sending
+          ? [
+              independentValueParsed,
+              dependentValueMinumum,
+              ethers.constants.One,
+              deadline,
+              recipient.address,
+              outputCurrency
+            ]
+          : [independentValueParsed, dependentValueMinumum, ethers.constants.One, deadline, outputCurrency]
+        value = ethers.constants.Zero
+      }
+    } else if (independentField === OUTPUT) {
+      ReactGA.event({
+        category: `${swapType}`,
+        action: sending ? 'TransferOutput' : 'SwapOutput'
+      })
+
+      if (swapType === ETH_TO_SETH) {
+        estimate = sending ? atomicConverterContract.estimate.ethToSEthTokenTransferOutput : atomicConverterContract.estimate.ethToSEthTokenSwapOutput
+        method = sending ? atomicConverterContract.ethToSEthTokenTransferOutput : atomicConverterContract.ethToSEthTokenSwapOutput
+        args = sending ? [independentValueParsed, deadline, recipient.address] : [independentValueParsed, deadline]
+        value = dependentValueMaximum
+      } else if (swapType === SETH_TO_ETH) {
+        estimate = sending ? atomicConverterContract.estimate.sEthTokenToEthTransferOutput : atomicConverterContract.estimate.sEthTokenToEthSwapOutput
+        method = sending ? atomicConverterContract.sEthTokenToEthTransferOutput : atomicConverterContract.sEthTokenToEthSwapOutput
+        args = sending
+          ? [independentValueParsed, dependentValueMaximum, deadline, recipient.address]
+          : [independentValueParsed, dependentValueMaximum, deadline]
+        value = ethers.constants.Zero
+      } else if (swapType === ETH_TO_OTHERSTOKEN) {
+        estimate = sending ? atomicConverterContract.estimate.ethToOtherSTokenTransferOutput : atomicConverterContract.estimate.ethToOtherSTokenSwapOutput
+        method = sending ? atomicConverterContract.ethToOtherSTokenTransferOutput : atomicConverterContract.ethToOtherSTokenSwapOutput
+        args = sending ? [dependentValueMinumum, deadline, recipient.address] : [dependentValueMinumum, deadline]
+        value = independentValueParsed
+      }else if (swapType === OTHERSTOKEN_TO_ETH) {
+        estimate = sending ? atomicConverterContract.estimate.otherSTokenToEthTransferOutput : atomicConverterContract.estimate.otherSTokenToEthSwapOutput
+        method = sending ? atomicConverterContract.otherSTokenToEthTransferOutput : atomicConverterContract.otherSTokenToEthSwapOutput
+        args = sending
+          ? [independentValueParsed, dependentValueMinumum, deadline, recipient.address]
+          : [independentValueParsed, dependentValueMinumum, deadline]
+        value = ethers.constants.Zero
+      }else if (swapType === STOKEN_TO_STOKEN){
+        estimate = sending ? atomicConverterContract.estimate.sTokenToStokenTransferOutput : atomicConverterContract.estimate.sTokenToStokenSwapOutput
+        method = sending ? atomicConverterContract.sTokenToStokenTransferOutput : atomicConverterContract.sTokenToStokenSwapOutput
+        args = sending
+          ? [
+              independentValueParsed,
+              dependentValueMinumum,
+              ethers.constants.One,
+              deadline,
+              recipient.address,
+              outputCurrency
+            ]
+          : [independentValueParsed, dependentValueMinumum, ethers.constants.One, deadline, outputCurrency]
+        value = ethers.constants.Zero
+      }
+    }
+
+    const estimatedGasLimit = await estimate(...args, { value })
+    method(...args, { value, gasLimit: calculateGasMargin(estimatedGasLimit, GAS_MARGIN) }).then(response => {
+      addTransaction(response)
+    })
+  }
+  /*
+  async function onSwap() {
+    const deadline = Math.ceil(Date.now() / 1000) + DEADLINE_FROM_NOW
+
+    let estimate, method, args, value
+    if (independentField === INPUT) {
+      ReactGA.event({
+        category: `${swapType}`,
+        action: sending ? 'TransferInput' : 'SwapInput'
+      })
+
       if (swapType === ETH_TO_TOKEN) {
         estimate = sending ? contract.estimate.ethToTokenTransferInput : contract.estimate.ethToTokenSwapInput
         method = sending ? contract.ethToTokenTransferInput : contract.ethToTokenSwapInput
@@ -584,7 +710,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
       addTransaction(response)
     })
   }
-
+*/
   const [customSlippageError, setcustomSlippageError] = useState('')
 
   const allBalances = useFetchAllBalances()

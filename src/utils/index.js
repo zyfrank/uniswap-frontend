@@ -2,6 +2,7 @@ import { ethers } from 'ethers'
 
 import FACTORY_ABI from '../constants/abis/factory'
 import EXCHANGE_ABI from '../constants/abis/exchange'
+import CONVERTER_ABI from '../constants/abis/atomicSynthetixUniswapConverter'
 import ERC20_ABI from '../constants/abis/erc20'
 import ERC20_BYTES32_ABI from '../constants/abis/erc20_bytes32'
 import { FACTORY_ADDRESSES } from '../constants'
@@ -116,6 +117,10 @@ export function getFactoryContract(networkId, library, account) {
 // account is optional
 export function getExchangeContract(exchangeAddress, library, account) {
   return getContract(exchangeAddress, EXCHANGE_ABI, library, account)
+}
+
+export function getAtomicSynthetixUniswapConverterContract(converterAddress, library, account) {
+  return getContract(converterAddress, CONVERTER_ABI, library, account)
 }
 
 // get token name
