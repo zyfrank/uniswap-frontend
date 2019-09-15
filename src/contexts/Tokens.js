@@ -41,6 +41,12 @@ const INITIAL_TOKENS_CONTEXT = {
       [DECIMALS]: 18,
       [EXCHANGE_ADDRESS]: '0xf249DFEEDF932a41f6f558e751D2c4226daFB7d8'
     },
+    '0xeB082E1B4a79a97bA352DC77489C8594d12eFff0': {
+      [NAME]: 'Synthetix Synth sBNB Token',
+      [SYMBOL]: 'sBNB',
+      [DECIMALS]: 18,
+      [EXCHANGE_ADDRESS]: '0xf249DFEEDF932a41f6f558e751D2c4226daFB7d8'
+    },
   }
 }
 

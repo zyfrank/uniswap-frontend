@@ -34,8 +34,8 @@ const ETH_TO_OTHERSTOKEN = 5
 const OTHERSTOKEN_TO_ETH = 6
 const STOKEN_TO_STOKEN = 7 
 
-const SETH_UNISWAP_EXCHANGE_ADDR = '0x8779C708e2C3b1067de9Cd63698E4334866c691C'
-const ATOMIC_CONVERT_ADDR = '0x8779C708e2C3b1067de9Cd63698E4334866c691C'
+const SETH_UNISWAP_EXCHANGE_ADDR = '0xf249DFEEDF932a41f6f558e751D2c4226daFB7d8'
+const ATOMIC_CONVERT_ADDR = '0x8742c8e4e42f1ef57c47afe0c0a2c49bb63e43bf'
 
 // denominated in bips
 const ALLOWED_SLIPPAGE_DEFAULT = 100
@@ -102,6 +102,7 @@ function calculateSlippageBounds(value, token = false, tokenAllowedSlippage, all
 }
 
 function getSwapType(inputCurrency, outputCurrency) {
+  return ETH_TO_SETH
   if (!inputCurrency || !outputCurrency) {
     return null
   }else if (inputCurrency === 'ETH') {
@@ -126,7 +127,7 @@ function getSwapType(inputCurrency, outputCurrency) {
     }
   }
 }
-
+/*
 // this mocks the getInputPrice function, and calculates the required output
 function calculateEtherTokenOutputFromInput(inputAmount, inputReserve, outputReserve) {
   const inputAmountWithFee = inputAmount.mul(ethers.utils.bigNumberify(997))
@@ -141,7 +142,7 @@ function calculateEtherTokenInputFromOutput(outputAmount, inputReserve, outputRe
   const denominator = outputReserve.sub(outputAmount).mul(ethers.utils.bigNumberify(997))
   return numerator.div(denominator).add(ethers.constants.One)
 }
-
+*/
 function getInitialSwapState(outputCurrency) {
   return {
     independentValue: '', // this is a user input
@@ -390,12 +391,27 @@ export default function ExchangePage({ initialCurrency, sending }) {
   // calculate dependent value
   useEffect(() => {
     const amount = independentValueParsed
-
-    if (swapType === ETH_TO_TOKEN) {
-      const reserveETH = outputReserveETH
-      const reserveToken = outputReserveToken
-
-      if (amount && reserveETH && reserveToken) {
+    console.log ("amount" + amount)
+    console.log('\n\n\n\n')
+    if (swapType === ETH_TO_SETH) {
+     // const reserveETH = outputReserveETH
+     // const reserveToken = outputReserveToken
+        
+        
+        try {
+                const srcBytes4 = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
+                const dstBytes4 = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
+                atomicConverterContract.inputPrice(srcBytes4, amount, dstBytes4).then(response => {
+                       dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: ethers.utils.bigNumberify(response)})
+                   })
+        } catch {
+          setIndependentError(t('insufficientLiquidity'))
+        }
+        return () => {
+          dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: '' })
+        }
+      
+      /*if (amount && reserveETH && reserveToken) {
         try {
           const calculatedDependentValue =
             independentField === INPUT
@@ -413,76 +429,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
         return () => {
           dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: '' })
         }
-      }
-    } else if (swapType === TOKEN_TO_ETH) {
-      const reserveETH = inputReserveETH
-      const reserveToken = inputReserveToken
-
-      if (amount && reserveETH && reserveToken) {
-        try {
-          const calculatedDependentValue =
-            independentField === INPUT
-              ? calculateEtherTokenOutputFromInput(amount, reserveToken, reserveETH)
-              : calculateEtherTokenInputFromOutput(amount, reserveToken, reserveETH)
-
-          if (calculatedDependentValue.lte(ethers.constants.Zero)) {
-            throw Error()
-          }
-
-          dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: calculatedDependentValue })
-        } catch {
-          setIndependentError(t('insufficientLiquidity'))
-        }
-        return () => {
-          dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: '' })
-        }
-      }
-    } else if (swapType === TOKEN_TO_TOKEN) {
-      const reserveETHFirst = inputReserveETH
-      const reserveTokenFirst = inputReserveToken
-
-      const reserveETHSecond = outputReserveETH
-      const reserveTokenSecond = outputReserveToken
-
-      if (amount && reserveETHFirst && reserveTokenFirst && reserveETHSecond && reserveTokenSecond) {
-        try {
-          if (independentField === INPUT) {
-            const intermediateValue = calculateEtherTokenOutputFromInput(amount, reserveTokenFirst, reserveETHFirst)
-            if (intermediateValue.lte(ethers.constants.Zero)) {
-              throw Error()
-            }
-            const calculatedDependentValue = calculateEtherTokenOutputFromInput(
-              intermediateValue,
-              reserveETHSecond,
-              reserveTokenSecond
-            )
-            if (calculatedDependentValue.lte(ethers.constants.Zero)) {
-              throw Error()
-            }
-            dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: calculatedDependentValue })
-          } else {
-            const intermediateValue = calculateEtherTokenInputFromOutput(amount, reserveETHSecond, reserveTokenSecond)
-            if (intermediateValue.lte(ethers.constants.Zero)) {
-              throw Error()
-            }
-            const calculatedDependentValue = calculateEtherTokenInputFromOutput(
-              intermediateValue,
-              reserveTokenFirst,
-              reserveETHFirst
-            )
-            if (calculatedDependentValue.lte(ethers.constants.Zero)) {
-              throw Error()
-            }
-            dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: calculatedDependentValue })
-          }
-        } catch {
-          setIndependentError(t('insufficientLiquidity'))
-        }
-        return () => {
-          dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: '' })
-        }
-      }
-    }
+      }*/
+    } 
   }, [
     independentValueParsed,
     swapType,
@@ -546,7 +494,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
       if (swapType === ETH_TO_SETH) {
         estimate = atomicConverterContract.estimate.ethToSethInput
         method = atomicConverterContract.ethToSethInput
-        args = [dependentValueMinumum, deadline, recipient.address]
+        args = [dependentValueMinumum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         value = independentValueParsed
       } else if (swapType === SETH_TO_ETH) {
         estimate = atomicConverterContract.estimate.sEthToEthInput
@@ -626,8 +574,11 @@ export default function ExchangePage({ initialCurrency, sending }) {
         value = ethers.constants.Zero
       }
     }
-
-    const estimatedGasLimit = await estimate(...args, { value })
+    console.log("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
+    console.log(args)
+    //const estimatedGasLimit = await estimate(...args, { value })
+    const estimatedGasLimit = ethers.utils.bigNumberify(6000000)
+    console.log("estimatedGasLimit:" + estimatedGasLimit)
     method(...args, { value, gasLimit: calculateGasMargin(estimatedGasLimit, GAS_MARGIN) }).then(response => {
       addTransaction(response)
     })

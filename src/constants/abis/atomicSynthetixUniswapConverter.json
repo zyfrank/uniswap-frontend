@@ -34,6 +34,37 @@
 		"constant": false,
 		"inputs": [
 			{
+				"name": "tokenBought",
+				"type": "uint256"
+			},
+			{
+				"name": "boughtCurrencyKey",
+				"type": "bytes4"
+			},
+			{
+				"name": "deadline",
+				"type": "uint256"
+			},
+			{
+				"name": "recipient",
+				"type": "address"
+			}
+		],
+		"name": "ethToOtherTokenOutput",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": true,
+		"stateMutability": "payable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
 				"name": "minSeth",
 				"type": "uint256"
 			},
@@ -287,15 +318,6 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
-		"inputs": [],
-		"name": "test",
-		"outputs": [],
-		"payable": true,
-		"stateMutability": "payable",
-		"type": "function"
-	},
-	{
 		"payable": true,
 		"stateMutability": "payable",
 		"type": "fallback"
@@ -305,6 +327,33 @@
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "constructor"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "src",
+				"type": "bytes4"
+			},
+			{
+				"name": "srcAmt",
+				"type": "uint256"
+			},
+			{
+				"name": "dst",
+				"type": "bytes4"
+			}
+		],
+		"name": "inputPrice",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
 	},
 	{
 		"constant": true,
