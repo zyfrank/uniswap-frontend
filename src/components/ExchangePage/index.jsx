@@ -35,7 +35,7 @@ const OTHERSTOKEN_TO_ETH = 6
 const STOKEN_TO_STOKEN = 7 
 
 //const SETH_UNISWAP_EXCHANGE_ADDR = '0xf249DFEEDF932a41f6f558e751D2c4226daFB7d8'
-const ATOMIC_CONVERT_ADDR = '0x3cd205364789258aa91cbc09ac04c6c49bc41e30'
+const ATOMIC_CONVERT_ADDR = '0x16fc2d1030e7816c6d8d6fce9d7ef06b3937721f'
 
 // denominated in bips
 const ALLOWED_SLIPPAGE_DEFAULT = 100
@@ -483,12 +483,12 @@ export default function ExchangePage({ initialCurrency, sending }) {
         value = independentValueParsed
 
       }else if (swapType === OTHERSTOKEN_TO_ETH) {
-        estimate = sending ? atomicConverterContract.estimate.otherSTokenToEthTransferInput : atomicConverterContract.estimate.otherSTokenToEthSwapInput
-        method = sending ? atomicConverterContract.otherSTokenToEthTransferInput : atomicConverterContract.otherSTokenToEthSwapInput
-        args = sending
-          ? [independentValueParsed, dependentValueMinumum, deadline, recipient.address]
-          : [independentValueParsed, dependentValueMinumum, deadline]
+        estimate = atomicConverterContract.estimate.otherTokenToEthInput
+        method = atomicConverterContract.otherTokenToEthInput
+        const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
+        args = [inputKey, independentValueParsed, dependentValueMinumum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         value = ethers.constants.Zero
+
       }else if (swapType === STOKEN_TO_STOKEN){
         estimate = sending ? atomicConverterContract.estimate.sTokenToStokenTransferInput : atomicConverterContract.estimate.sTokenToStokenSwapInput
         method = sending ? atomicConverterContract.sTokenToStokenTransferInput : atomicConverterContract.sTokenToStokenSwapInput
