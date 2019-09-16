@@ -34,8 +34,8 @@ const ETH_TO_OTHERSTOKEN = 5
 const OTHERSTOKEN_TO_ETH = 6
 const STOKEN_TO_STOKEN = 7 
 
-const SETH_UNISWAP_EXCHANGE_ADDR = '0xf249DFEEDF932a41f6f558e751D2c4226daFB7d8'
-const ATOMIC_CONVERT_ADDR = '0x8742c8e4e42f1ef57c47afe0c0a2c49bb63e43bf'
+//const SETH_UNISWAP_EXCHANGE_ADDR = '0xf249DFEEDF932a41f6f558e751D2c4226daFB7d8'
+const ATOMIC_CONVERT_ADDR = '0x3cd205364789258aa91cbc09ac04c6c49bc41e30'
 
 // denominated in bips
 const ALLOWED_SLIPPAGE_DEFAULT = 100
@@ -102,7 +102,6 @@ function calculateSlippageBounds(value, token = false, tokenAllowedSlippage, all
 }
 
 function getSwapType(inputCurrency, outputCurrency) {
-  return ETH_TO_SETH
   if (!inputCurrency || !outputCurrency) {
     return null
   }else if (inputCurrency === 'ETH') {
@@ -127,22 +126,7 @@ function getSwapType(inputCurrency, outputCurrency) {
     }
   }
 }
-/*
-// this mocks the getInputPrice function, and calculates the required output
-function calculateEtherTokenOutputFromInput(inputAmount, inputReserve, outputReserve) {
-  const inputAmountWithFee = inputAmount.mul(ethers.utils.bigNumberify(997))
-  const numerator = inputAmountWithFee.mul(outputReserve)
-  const denominator = inputReserve.mul(ethers.utils.bigNumberify(1000)).add(inputAmountWithFee)
-  return numerator.div(denominator)
-}
 
-// this mocks the getOutputPrice function, and calculates the required input
-function calculateEtherTokenInputFromOutput(outputAmount, inputReserve, outputReserve) {
-  const numerator = inputReserve.mul(outputAmount).mul(ethers.utils.bigNumberify(1000))
-  const denominator = outputReserve.sub(outputAmount).mul(ethers.utils.bigNumberify(997))
-  return numerator.div(denominator).add(ethers.constants.One)
-}
-*/
 function getInitialSwapState(outputCurrency) {
   return {
     independentValue: '', // this is a user input
@@ -284,8 +268,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
   const [recipient, setRecipient] = useState({ address: '', name: '' })
   const [recipientError, setRecipientError] = useState()
 
-  // get swap type from the currency types
-  const swapType = getSwapType(inputCurrency, outputCurrency)
+
 
   // get decimals and exchange address for each of the currency types
   const { symbol: inputSymbol, decimals: inputDecimals, exchangeAddress: inputExchangeAddress } = useTokenDetails(
@@ -295,15 +278,18 @@ export default function ExchangePage({ initialCurrency, sending }) {
     outputCurrency
   )
 
-  const inputExchangeContract = useExchangeContract(inputExchangeAddress)
-  const outputExchangeContract = useExchangeContract(outputExchangeAddress)
-  const sEthExchangeContract = useExchangeContract(SETH_UNISWAP_EXCHANGE_ADDR)
+  // get swap type from the currency types
+  const swapType = getSwapType(inputSymbol, outputSymbol)
+
+  //const inputExchangeContract = useExchangeContract(inputExchangeAddress)
+  //const outputExchangeContract = useExchangeContract(outputExchangeAddress)
+  //const sEthExchangeContract = useExchangeContract(SETH_UNISWAP_EXCHANGE_ADDR)
   const atomicConverterContract = useAtomicSynthetixUniswapConverterContract(ATOMIC_CONVERT_ADDR)
 
-  const contract = swapType === ETH_TO_TOKEN ? outputExchangeContract : inputExchangeContract
+ // const contract = swapType === ETH_TO_TOKEN ? outputExchangeContract : inputExchangeContract
 
   // get input allowance
-  const inputAllowance = useAddressAllowance(account, inputCurrency, inputExchangeAddress)
+  const inputAllowance = useAddressAllowance(account, inputCurrency, ATOMIC_CONVERT_ADDR)
 
   // fetch reserves for each of the currency types
   const { reserveETH: inputReserveETH, reserveToken: inputReserveToken } = useExchangeReserves(inputCurrency)
@@ -393,16 +379,19 @@ export default function ExchangePage({ initialCurrency, sending }) {
     const amount = independentValueParsed
     console.log ("amount" + amount)
     console.log('\n\n\n\n')
-    if (swapType === ETH_TO_SETH) {
-     // const reserveETH = outputReserveETH
-     // const reserveToken = outputReserveToken
-        
+//    if (swapType === ETH_TO_SETH) {
         
         try {
                 const srcBytes4 = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
+                console.log("srcBytes4:" + srcBytes4)
                 const dstBytes4 = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
+                console.log("dstBytes4:" + dstBytes4)
                 atomicConverterContract.inputPrice(srcBytes4, amount, dstBytes4).then(response => {
-                       dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: ethers.utils.bigNumberify(response)})
+                       const resultAmt = ethers.utils.bigNumberify(response)
+                       if (resultAmt.lte(ethers.constants.Zero)) {
+                           throw Error()
+                        }
+                       dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: resultAmt})
                    })
         } catch {
           setIndependentError(t('insufficientLiquidity'))
@@ -411,26 +400,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
           dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: '' })
         }
       
-      /*if (amount && reserveETH && reserveToken) {
-        try {
-          const calculatedDependentValue =
-            independentField === INPUT
-              ? calculateEtherTokenOutputFromInput(amount, reserveETH, reserveToken)
-              : calculateEtherTokenInputFromOutput(amount, reserveETH, reserveToken)
-
-          if (calculatedDependentValue.lte(ethers.constants.Zero)) {
-            throw Error()
-          }
-
-          dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: calculatedDependentValue })
-        } catch {
-          setIndependentError(t('insufficientLiquidity'))
-        }
-        return () => {
-          dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: '' })
-        }
-      }*/
-    } 
+//    } 
   }, [
     independentValueParsed,
     swapType,
@@ -499,13 +469,19 @@ export default function ExchangePage({ initialCurrency, sending }) {
       } else if (swapType === SETH_TO_ETH) {
         estimate = atomicConverterContract.estimate.sEthToEthInput
         method = atomicConverterContract.sEthToEthInput
-        args = [independentValueParsed, dependentValueMinumum, deadline, recipient.address]
+        args = [independentValueParsed, dependentValueMinumum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         value = ethers.constants.Zero
       } else if (swapType === ETH_TO_OTHERSTOKEN) {
-        estimate = sending ? atomicConverterContract.estimate.ethToOtherSTokenTransferInput : atomicConverterContract.estimate.ethToOtherSTokenSwapInput
-        method = sending ? atomicConverterContract.ethToOtherSTokenTransferInput : atomicConverterContract.ethToOtherSTokenSwapInput
-        args = sending ? [dependentValueMinumum, deadline, recipient.address] : [dependentValueMinumum, deadline]
+        
+        estimate = atomicConverterContract.estimate.ethToOtherTokenInput
+        method = atomicConverterContract.ethToOtherTokenInput
+        console.log("outputSymbol:" + outputSymbol)
+        console.log("dependentValueMinumum:" + dependentValueMinumum)
+        const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
+        //args = [ethers.utils.bigNumberify(100000), outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = [dependentValueMinumum, outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         value = independentValueParsed
+
       }else if (swapType === OTHERSTOKEN_TO_ETH) {
         estimate = sending ? atomicConverterContract.estimate.otherSTokenToEthTransferInput : atomicConverterContract.estimate.otherSTokenToEthSwapInput
         method = sending ? atomicConverterContract.otherSTokenToEthTransferInput : atomicConverterContract.otherSTokenToEthSwapInput
@@ -576,6 +552,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
     }
     console.log("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
     console.log(args)
+    console.log("SWAP TYPE:" + swapType)
     //const estimatedGasLimit = await estimate(...args, { value })
     const estimatedGasLimit = ethers.utils.bigNumberify(6000000)
     console.log("estimatedGasLimit:" + estimatedGasLimit)
