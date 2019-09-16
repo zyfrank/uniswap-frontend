@@ -1,5 +1,7 @@
 pragma solidity ^0.5.7;
 
+import "./SafeDecimalMath.sol";
+
 interface UniswapExchangeInterface {
 	function getEthToTokenInputPrice(uint) external view returns (uint);
     function getEthToTokenOutputPrice(uint) external view returns (uint);
@@ -37,9 +39,12 @@ interface SynthetixFeePool{
 
 	function amountReceivedFromExchange(uint value) external view returns (uint);
 	function exchangedAmountToReceive(uint value) external view returns (uint);
+	function exchangeFeeRate() external view returns (uint);
 }
 
 contract AtomicSynthetixUniswapConverter {
+	using SafeMath for uint;
+    using SafeDecimalMath for uint;
 
 	address public use = 0xA1b571D290faB6DA975b7A95Eef80788ba85F4C6; // Uniswap sEth Exchange
 	address public sEthToken = 0x3731ab0E9FeEE3Ef0C427E874265E8F9a9111e27;  //Synthetix SynthsETH
@@ -67,11 +72,30 @@ contract AtomicSynthetixUniswapConverter {
 		return feePool.transferredAmountToReceive(receivedAmt);
 	}
 
+    function _sTokenAmtRecvFromExchangeByToken (uint srcAmt, bytes4 srcKey, bytes4 dstKey) internal view returns (uint){
+        SynthetixFeePool feePool = SynthetixFeePool(synFeePool);
+		SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
+		uint dstAmt = synRatesContract.effectiveValue(srcKey, srcAmt, dstKey);
+		uint feeRate = feePool.exchangeFeeRate();
+		return  dstAmt.multiplyDecimal(SafeDecimalMath.unit().sub(feeRate));
+	//	return feePool.amountReceivedFromExchange(dstAmt);
+	}
+/*
 	function _sTokenAmountReceivedFromExchange (uint sentAmt) internal view returns (uint) {
         SynthetixFeePool feePool = SynthetixFeePool(synFeePool);
 		return feePool.amountReceivedFromExchange(sentAmt);
 	}
-
+*/
+    function _sTokenEchangedAmtToRecvByToken (uint receivedAmt, bytes4 receivedKey, bytes4 srcKey) internal view returns (uint) {
+		SynthetixFeePool feePool = SynthetixFeePool(synFeePool);
+		SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
+		// to change
+		uint feeRate = feePool.exchangeFeeRate();
+		uint dstAmt = receivedAmt.divideDecimal(SafeDecimalMath.unit().sub(feeRate));
+	//	uint dstAmt = feePool.exchangedAmountToReceive(receivedAmt);
+		return synRatesContract.effectiveValue(receivedKey, dstAmt, srcKey);
+	}
+/*
 	function _sTokenExchangedAmountToReceive (uint receivedAmt) internal view returns (uint) {
         SynthetixFeePool feePool = SynthetixFeePool(synFeePool);
 		return feePool.exchangedAmountToReceive(receivedAmt);
@@ -81,33 +105,59 @@ contract AtomicSynthetixUniswapConverter {
 		uint dstAmt = SynthetixRatesInterface(synRates).effectiveValue(src, srcAmt, dst);
 		return _sTokenAmountReceivedFromExchange(dstAmt);
 	}
-
+*/
     function inputPrice(bytes4 src, uint srcAmt, bytes4 dst) external view returns (uint) {
 		if (src == 'ETH') {
 			uint sEthAmt = UniswapExchangeInterface(use).getEthToTokenInputPrice(srcAmt);
 			if (dst == 'sETH') {
                 return sEthAmt;
 			}else {
-                return _sTokenToStokenExchangeAmount(sEthCurrencyKey, sEthAmt, dst);
+				return _sTokenAmtRecvFromExchangeByToken(sEthAmt, sEthCurrencyKey, dst);
+               // return _sTokenToStokenExchangeAmount(sEthCurrencyKey, sEthAmt, dst);
 			}
 		}else if (src == 'sETH'){
 			if  (dst == 'ETH') {
 				return UniswapExchangeInterface(use).getTokenToEthInputPrice(srcAmt);
 			} else {
-                return _sTokenToStokenExchangeAmount(sEthCurrencyKey, srcAmt, dst);
+				return _sTokenAmtRecvFromExchangeByToken(srcAmt, sEthCurrencyKey, dst);
+              //  return _sTokenToStokenExchangeAmount(sEthCurrencyKey, srcAmt, dst);
 			}
 		}else {
 			if (dst == 'ETH'){
-				uint sEthAmt = _sTokenToStokenExchangeAmount(src, srcAmt, sEthCurrencyKey);
+				uint sEthAmt = _sTokenAmtRecvFromExchangeByToken(srcAmt, src, sEthCurrencyKey);
                 return UniswapExchangeInterface(use).getTokenToEthInputPrice(sEthAmt);
 			}else{
-                return _sTokenToStokenExchangeAmount(src, srcAmt, dst);
+                return _sTokenAmtRecvFromExchangeByToken(srcAmt, src, dst);
+			}
+		}
+	}
+
+	function outputPrice(bytes4 src, bytes4 dst, uint dstAmt) external view returns (uint) {
+		if (src == 'ETH') {
+			if (dst == 'sETH') {
+                return UniswapExchangeInterface(use).getEthToTokenOutputPrice(dstAmt);
+			}else {
+				uint sEthAmt = _sTokenEchangedAmtToRecvByToken(dstAmt, dst, sEthCurrencyKey);
+				return UniswapExchangeInterface(use).getEthToTokenOutputPrice(sEthAmt);
+
+			}
+		}else if (src == 'sETH'){
+			if  (dst == 'ETH') {
+				return UniswapExchangeInterface(use).getTokenToEthOutputPrice(dstAmt);
+			} else {
+				return _sTokenEchangedAmtToRecvByToken(dstAmt, dst, sEthCurrencyKey);
+			}
+		}else {
+			if (dst == 'ETH'){
+				uint sEthAmt = UniswapExchangeInterface(use).getTokenToEthOutputPrice(dstAmt);
+				return _sTokenEchangedAmtToRecvByToken(sEthAmt, sEthCurrencyKey, src);
+			}else{
+                return _sTokenEchangedAmtToRecvByToken(dstAmt, dst, src);
 			}
 		}
 	}
 
 
-	
     function sEthToEthInput (uint sEthSold, uint minEth, uint deadline, address recipient) external returns (uint ethAmt) {
 
 		require(TokenInterface(sEthToken).transferFrom (msg.sender, address(this), sEthSold));
@@ -132,49 +182,54 @@ contract AtomicSynthetixUniswapConverter {
 	function ethToOtherTokenInput (uint minToken, bytes4 boughtCurrencyKey, uint deadline, address recipient) external payable returns (uint) {
 		UniswapExchangeInterface useContract = UniswapExchangeInterface(use);
 		SynthetixInterface synContract = SynthetixInterface(synthetix);
-		SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
-		uint minsEth = synRatesContract.effectiveValue(boughtCurrencyKey, minToken, sEthCurrencyKey);
-		minsEth = _sTokenExchangedAmountToReceive(minsEth);
+		//SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
+		//uint minsEth = synRatesContract.effectiveValue(boughtCurrencyKey, minToken, sEthCurrencyKey);
+		//minsEth = _sTokenExchangedAmountToReceive(minsEth);
+		uint minsEth = _sTokenEchangedAmtToRecvByToken(minToken, boughtCurrencyKey, sEthCurrencyKey);
 		uint sEthAmt = useContract.ethToTokenSwapInput.value(msg.value)(minsEth, deadline);
 		
-	//	uint sEthAmt = useContract.ethToTokenSwapInput.value(msg.value)(minToken, deadline);
-		uint tokenAmt = synRatesContract.effectiveValue(sEthCurrencyKey, sEthAmt, boughtCurrencyKey);
-		uint receivedAmt = _sTokenAmountReceivedFromExchange(tokenAmt);
-        uint receivedAmtAfterTransfered = _sTokenAmountReceivedFromTransfer(receivedAmt);
-        assert (receivedAmtAfterTransfered >= minToken);
-	    assert (synContract.exchange (sEthCurrencyKey, sEthAmt, boughtCurrencyKey, recipient));
-		assert (TokenInterface(synthsAddrs[boughtCurrencyKey]).transfer(recipient, receivedAmt));
+	 //	uint tokenAmt = synRatesContract.effectiveValue(sEthCurrencyKey, sEthAmt, boughtCurrencyKey);
+		//uint receivedAmt = _sTokenAmountReceivedFromExchange(tokenAmt);
+        //uint receivedAmtAfterTransfered = _sTokenAmountReceivedFromTransfer(receivedAmt);
+		uint receivedAmt = _sTokenAmtRecvFromExchangeByToken(sEthAmt, sEthCurrencyKey, boughtCurrencyKey);
+        require (receivedAmt >= minToken);
+	    require (synContract.exchange (sEthCurrencyKey, sEthAmt, boughtCurrencyKey, address(this)));
+		require (TokenInterface(synthsAddrs[boughtCurrencyKey]).transfer(recipient, receivedAmt));
 
-        return receivedAmtAfterTransfered;
+        return receivedAmt;
 	}
 
 	function ethToOtherTokenOutput (uint tokenBought, bytes4 boughtCurrencyKey, uint deadline, address recipient) external payable returns (uint) {
 		UniswapExchangeInterface useContract = UniswapExchangeInterface(use);
 		SynthetixInterface synContract = SynthetixInterface(synthetix);
-		SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
+		//SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
 		
-		uint tokenBeforeTranfer = _sTokenTransferredAmountToReceive (tokenBought);
-		uint neededsEthBeforeFeePaid = synRatesContract.effectiveValue(boughtCurrencyKey, tokenBeforeTranfer, sEthCurrencyKey);
-		uint neededsEth = _sTokenExchangedAmountToReceive(neededsEthBeforeFeePaid);
-		uint ethAmt = useContract.ethToTokenSwapOutput.value(msg.value)(neededsEth, deadline);
+		//uint tokenBeforeTranfer = _sTokenTransferredAmountToReceive (tokenBought);
+		//uint neededsEthBeforeFeePaid = synRatesContract.effectiveValue(boughtCurrencyKey, tokenBeforeTranfer, sEthCurrencyKey);
+		//uint neededsEth = _sTokenExchangedAmountToReceive(neededsEthBeforeFeePaid);
+
+		uint sEthAmt = _sTokenEchangedAmtToRecvByToken(tokenBought, boughtCurrencyKey, sEthCurrencyKey);
+		uint ethAmt = useContract.ethToTokenSwapOutput.value(msg.value)(sEthAmt, deadline);
 		if (msg.value > ethAmt){
 			msg.sender.send(msg.value - ethAmt);
 		} 
-	    require (synContract.exchange (sEthCurrencyKey, neededsEth, boughtCurrencyKey, recipient));
+	    require (synContract.exchange(sEthCurrencyKey, sEthAmt, boughtCurrencyKey, address(this)));
 		
         //Synthetix FeePool has a minor bug cause following computation
-		uint tokenGot = synRatesContract.effectiveValue(sEthCurrencyKey, neededsEth, boughtCurrencyKey);
-		tokenGot = _sTokenAmountReceivedFromExchange(tokenGot);
-        assert (TokenInterface(synthsAddrs['sUSD']).transfer(recipient, tokenGot));
-		return _sTokenAmountReceivedFromTransfer(tokenGot);
+		//uint tokenGot = synRatesContract.effectiveValue(sEthCurrencyKey, neededsEth, boughtCurrencyKey);
+		//tokenGot = _sTokenAmountReceivedFromExchange(tokenGot);
+        assert (TokenInterface(synthsAddrs[boughtCurrencyKey]).transfer(recipient, tokenBought));
+		return ethAmt;
+	//	return _sTokenAmountReceivedFromTransfer(tokenBought);
 	}
 
 	function otherTokenToEthInput (bytes4 sourceCurrencyKey, uint sourceAmount, uint minEth, uint deadline, address recipient) external returns (uint) {
 		UniswapExchangeInterface useContract = UniswapExchangeInterface(use);
 		SynthetixInterface synContract = SynthetixInterface(synthetix);
-        SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
-		uint sEthAmt = synRatesContract.effectiveValue(sourceCurrencyKey, sourceAmount, sEthCurrencyKey);
-		uint sEthAmtReceived = _sTokenAmountReceivedFromExchange(sEthAmt);
+    //    SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
+	//	uint sEthAmt = synRatesContract.effectiveValue(sourceCurrencyKey, sourceAmount, sEthCurrencyKey);
+	//	uint sEthAmtReceived = _sTokenAmountReceivedFromExchange(sEthAmt);
+		uint sEthAmtReceived = _sTokenAmtRecvFromExchangeByToken(sourceAmount, sourceCurrencyKey,sEthCurrencyKey);
 		require(TokenInterface(synthsAddrs[sourceCurrencyKey]).transferFrom (msg.sender, address(this), sourceAmount));
 		TokenInterface(synthsAddrs[sourceCurrencyKey]).approve(synthetix, sourceAmount);
         require (synContract.exchange (sourceCurrencyKey, sourceAmount, sEthCurrencyKey, address(this)));
@@ -182,29 +237,28 @@ contract AtomicSynthetixUniswapConverter {
 		TokenInterface(sEthToken).approve(use, sEthAmtReceived);
         return useContract.tokenToEthTransferInput(sEthAmtReceived, minEth, deadline, recipient);
 	}
-
-
 		
 	function otherTokenToEthOutput (uint ethBought, bytes4 sourceCurrencyKey, uint maxSourceAmount, uint deadline, address recipient) external returns (uint) {
 		UniswapExchangeInterface useContract = UniswapExchangeInterface(use);
 		SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
 		SynthetixInterface synContract = SynthetixInterface(synthetix);
 
-		uint neededSoldSEth = useContract.getTokenToEthOutputPrice (ethBought);
-		uint neeedSoldToken = synRatesContract.effectiveValue(sEthCurrencyKey, neededSoldSEth, sourceCurrencyKey);
-		neededSoldToken = _sTokenExchangedAmountToReceive(neeedSoldToken);
-		neededSoldToken = _sTokenTransferredAmountToReceive(neeedSoldToken);
-        require (neededSoldToken <= maxSourceAmount);
+		uint sEthAmt = useContract.getTokenToEthOutputPrice (ethBought);
+		//uint neeedSoldToken = synRatesContract.effectiveValue(sEthCurrencyKey, neededSoldSEth, sourceCurrencyKey);
+		//neededSoldToken = _sTokenExchangedAmountToReceive(neeedSoldToken);
+		//neededSoldToken = _sTokenTransferredAmountToReceive(neeedSoldToken);
+		uint srcAmt = _sTokenEchangedAmtToRecvByToken(sEthAmt, sEthCurrencyKey, sourceCurrencyKey);
+        require (srcAmt <= maxSourceAmount);
 
-        require(TokenInterface(synthsAddrs[sourceCurrencyKey]).transferFrom(msg.sender, address(this), neededSoldToken));
-		TokenInterface(synthsAddrs[sourceCurrencyKey]).approve(synthetix, neededSoldToken);
-		require (synContract.exchange(sourceCurrencyKey, neededSoldToken, sEthCurrencyKey, recipient));
-        uint boughtsEth = synRatesContract.effectiveValue(sourceCurrencyKey, neeedSoldToken, sEthCurrencyKey);
-		boughtsEth = _sTokenAmountReceivedFromExchange(boughtsEth);
-		boughtsEth = _sTokenAmountReceivedFromTransfer(boughtsEth);
+        require(TokenInterface(synthsAddrs[sourceCurrencyKey]).transferFrom(msg.sender, address(this), srcAmt));
+		TokenInterface(synthsAddrs[sourceCurrencyKey]).approve(synthetix, srcAmt);
+		require (synContract.exchange(sourceCurrencyKey, srcAmt, sEthCurrencyKey, address(this)));
+        //uint boughtsEth = synRatesContract.effectiveValue(sourceCurrencyKey, neeedSoldToken, sEthCurrencyKey);
+		//boughtsEth = _sTokenAmountReceivedFromExchange(boughtsEth);
+		//boughtsEth = _sTokenAmountReceivedFromTransfer(boughtsEth);
 
-        useContract.tokenToEthTransferOutput(ethBought, neededSoldSEth, deadline, recipient);
-		return neededSoldToken;
+        useContract.tokenToEthTransferOutput(ethBought, sEthAmt, deadline, recipient);
+		return srcAmt;
 	}
 
 
@@ -225,24 +279,25 @@ contract AtomicSynthetixUniswapConverter {
 	function sTokenToStokenInput (bytes4 sourceCurrencyKey, uint sourceAmount, bytes4 destinationCurrencyKey, uint minDstAmt, uint deadline, address destinationAddress) external returns (bool) {
 		SynthetixInterface synContract = SynthetixInterface(synthetix);
 		SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
-		uint boughtDstAmt = synRatesContract.effectiveValue(sourceCurrencyKey, sourceAmount, destinationCurrencyKey);
-		boughtDstAmt = _sTokenAmountReceivedFromExchange(boughtDstAmt);
-		boughtDstAmt = _sTokenAmountReceivedFromTransfer(boughtDstAmt);
-		assert (boughtDstAmt >= minDstAmt);
+	//	uint boughtDstAmt = synRatesContract.effectiveValue(sourceCurrencyKey, sourceAmount, destinationCurrencyKey);
+	//	boughtDstAmt = _sTokenAmountReceivedFromExchange(boughtDstAmt);
+	//	boughtDstAmt = _sTokenAmountReceivedFromTransfer(boughtDstAmt);
+		uint dstAmt = _sTokenAmtRecvFromExchangeByToken(sourceAmount, sourceCurrencyKey, destinationCurrencyKey);
+		assert (dstAmt >= minDstAmt);
 		require(TokenInterface(synthsAddrs[sourceCurrencyKey]).transferFrom (msg.sender, address(this), sourceAmount));
 		TokenInterface(synthsAddrs[sourceCurrencyKey]).approve(synthetix, sourceAmount);
 		synContract.exchange(sourceCurrencyKey, sourceAmount, destinationCurrencyKey, address(this));
-		require(TokenInterface(synthsAddrs[destinationCurrencyKey]).transfer(destinationAddress,boughtDstAmt));
-
+		require(TokenInterface(synthsAddrs[destinationCurrencyKey]).transfer(destinationAddress,dstAmt));
 	}
 
 	function sTokenToStokenOutput (bytes4 sourceCurrencyKey, uint maxSourceAmount, bytes4 destinationCurrencyKey, uint boughtDstAmt, address destinationAddress) external returns (uint) {
 		SynthetixInterface synContract = SynthetixInterface(synthetix);
-		SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
-		uint srcToBeSoldAfterFeePaid = synRatesContract.effectiveValue(destinationCurrencyKey, boughtDstAmt, sourceCurrencyKey);
-		uint srcToBeSold = _sTokenTransferredAmountToReceive(srcToBeSoldAfterFeePaid);
-        assert (srcToBeSold <= maxSourceAmount);
-		require (synContract.exchange(sourceCurrencyKey, srcToBeSold, destinationCurrencyKey, destinationAddress));
-		return srcToBeSold;
+	//	SynthetixRatesInterface synRatesContract = SynthetixRatesInterface(synRates);
+	//	uint srcToBeSoldAfterFeePaid = synRatesContract.effectiveValue(destinationCurrencyKey, boughtDstAmt, sourceCurrencyKey);
+	//	uint srcToBeSold = _sTokenTransferredAmountToReceive(srcToBeSoldAfterFeePaid);
+		uint srcAmt = _sTokenEchangedAmtToRecvByToken(boughtDstAmt, destinationCurrencyKey, sourceCurrencyKey);
+        assert (srcAmt <= maxSourceAmount);
+		require (synContract.exchange(sourceCurrencyKey, srcAmt, destinationCurrencyKey, destinationAddress));
+		return srcAmt;
 	}
 } 

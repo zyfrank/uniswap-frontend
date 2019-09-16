@@ -34,8 +34,7 @@ const ETH_TO_OTHERSTOKEN = 5
 const OTHERSTOKEN_TO_ETH = 6
 const STOKEN_TO_STOKEN = 7 
 
-//const SETH_UNISWAP_EXCHANGE_ADDR = '0xf249DFEEDF932a41f6f558e751D2c4226daFB7d8'
-const ATOMIC_CONVERT_ADDR = '0x16fc2d1030e7816c6d8d6fce9d7ef06b3937721f'
+const ATOMIC_CONVERT_ADDR = '0x1ebec67502a500be28b39ecef5970fbce32a4b73'
 
 // denominated in bips
 const ALLOWED_SLIPPAGE_DEFAULT = 100
@@ -377,22 +376,27 @@ export default function ExchangePage({ initialCurrency, sending }) {
   // calculate dependent value
   useEffect(() => {
     const amount = independentValueParsed
-    console.log ("amount" + amount)
-    console.log('\n\n\n\n')
-//    if (swapType === ETH_TO_SETH) {
         
         try {
                 const srcBytes4 = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
-                console.log("srcBytes4:" + srcBytes4)
+      //          console.log("srcBytes4:" + srcBytes4)
                 const dstBytes4 = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
-                console.log("dstBytes4:" + dstBytes4)
-                atomicConverterContract.inputPrice(srcBytes4, amount, dstBytes4).then(response => {
+    //            console.log("dstBytes4:" + dstBytes4)
+                let method, args
+                if (independentField === INPUT){
+                  method = atomicConverterContract.inputPrice
+                  args = [srcBytes4, amount, dstBytes4]
+                }else{
+                  method = atomicConverterContract.outputPrice
+                  args = [srcBytes4, dstBytes4, amount]
+                }
+                method(...args).then(response => {
                        const resultAmt = ethers.utils.bigNumberify(response)
                        if (resultAmt.lte(ethers.constants.Zero)) {
                            throw Error()
                         }
                        dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: resultAmt})
-                   })
+                })
         } catch {
           setIndependentError(t('insufficientLiquidity'))
         }
@@ -475,8 +479,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
         
         estimate = atomicConverterContract.estimate.ethToOtherTokenInput
         method = atomicConverterContract.ethToOtherTokenInput
-        console.log("outputSymbol:" + outputSymbol)
-        console.log("dependentValueMinumum:" + dependentValueMinumum)
+      //  console.log("outputSymbol:" + outputSymbol)
+        //console.log("dependentValueMinumum:" + dependentValueMinumum)
         const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
         //args = [ethers.utils.bigNumberify(100000), outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         args = [dependentValueMinumum, outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
@@ -487,21 +491,15 @@ export default function ExchangePage({ initialCurrency, sending }) {
         method = atomicConverterContract.otherTokenToEthInput
         const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
         args = [inputKey, independentValueParsed, dependentValueMinumum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        
         value = ethers.constants.Zero
 
       }else if (swapType === STOKEN_TO_STOKEN){
-        estimate = sending ? atomicConverterContract.estimate.sTokenToStokenTransferInput : atomicConverterContract.estimate.sTokenToStokenSwapInput
-        method = sending ? atomicConverterContract.sTokenToStokenTransferInput : atomicConverterContract.sTokenToStokenSwapInput
-        args = sending
-          ? [
-              independentValueParsed,
-              dependentValueMinumum,
-              ethers.constants.One,
-              deadline,
-              recipient.address,
-              outputCurrency
-            ]
-          : [independentValueParsed, dependentValueMinumum, ethers.constants.One, deadline, outputCurrency]
+        estimate = atomicConverterContract.estimate.sTokenToStokenInput
+        method = atomicConverterContract.sTokenToStokenInput
+        const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
+        const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
+        args = [inputKey, independentValueParsed, outputKey, dependentValueMinumum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         value = ethers.constants.Zero
       }
     } else if (independentField === OUTPUT) {
@@ -511,134 +509,53 @@ export default function ExchangePage({ initialCurrency, sending }) {
       })
 
       if (swapType === ETH_TO_SETH) {
-        estimate = sending ? atomicConverterContract.estimate.ethToSEthTokenTransferOutput : atomicConverterContract.estimate.ethToSEthTokenSwapOutput
-        method = sending ? atomicConverterContract.ethToSEthTokenTransferOutput : atomicConverterContract.ethToSEthTokenSwapOutput
-        args = sending ? [independentValueParsed, deadline, recipient.address] : [independentValueParsed, deadline]
+        estimate = atomicConverterContract.estimate.ethToSethOutput
+        method = atomicConverterContract.ethToSethOutput
+        args = [independentValueParsed, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         value = dependentValueMaximum
       } else if (swapType === SETH_TO_ETH) {
-        estimate = sending ? atomicConverterContract.estimate.sEthTokenToEthTransferOutput : atomicConverterContract.estimate.sEthTokenToEthSwapOutput
-        method = sending ? atomicConverterContract.sEthTokenToEthTransferOutput : atomicConverterContract.sEthTokenToEthSwapOutput
-        args = sending
-          ? [independentValueParsed, dependentValueMaximum, deadline, recipient.address]
-          : [independentValueParsed, dependentValueMaximum, deadline]
+
+        estimate = atomicConverterContract.estimate.sEthToEthOutput
+        method = atomicConverterContract.sEthToEthOutput
+        args = [independentValueParsed, dependentValueMaximum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         value = ethers.constants.Zero
       } else if (swapType === ETH_TO_OTHERSTOKEN) {
-        estimate = sending ? atomicConverterContract.estimate.ethToOtherSTokenTransferOutput : atomicConverterContract.estimate.ethToOtherSTokenSwapOutput
-        method = sending ? atomicConverterContract.ethToOtherSTokenTransferOutput : atomicConverterContract.ethToOtherSTokenSwapOutput
-        args = sending ? [dependentValueMinumum, deadline, recipient.address] : [dependentValueMinumum, deadline]
+        estimate = atomicConverterContract.estimate.ethToOtherTokenOutput
+        method = atomicConverterContract.ethToOtherTokenOutput
+      //  console.log("outputSymbol:" + outputSymbol)
+       // console.log("dependentValueMinumum:" + dependentValueMinumum)
+        const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
+        //args = [ethers.utils.bigNumberify(100000), outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = [dependentValueMaximum, outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         value = independentValueParsed
+
       }else if (swapType === OTHERSTOKEN_TO_ETH) {
-        estimate = sending ? atomicConverterContract.estimate.otherSTokenToEthTransferOutput : atomicConverterContract.estimate.otherSTokenToEthSwapOutput
-        method = sending ? atomicConverterContract.otherSTokenToEthTransferOutput : atomicConverterContract.otherSTokenToEthSwapOutput
-        args = sending
-          ? [independentValueParsed, dependentValueMinumum, deadline, recipient.address]
-          : [independentValueParsed, dependentValueMinumum, deadline]
+        estimate = atomicConverterContract.estimate.otherTokenToEthOutput
+        method = atomicConverterContract.otherTokenToEthOutput
+        const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
+        args = [inputKey, dependentValueMaximum, independentValueParsed, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]        
         value = ethers.constants.Zero
+
       }else if (swapType === STOKEN_TO_STOKEN){
-        estimate = sending ? atomicConverterContract.estimate.sTokenToStokenTransferOutput : atomicConverterContract.estimate.sTokenToStokenSwapOutput
-        method = sending ? atomicConverterContract.sTokenToStokenTransferOutput : atomicConverterContract.sTokenToStokenSwapOutput
-        args = sending
-          ? [
-              independentValueParsed,
-              dependentValueMinumum,
-              ethers.constants.One,
-              deadline,
-              recipient.address,
-              outputCurrency
-            ]
-          : [independentValueParsed, dependentValueMinumum, ethers.constants.One, deadline, outputCurrency]
+        estimate = atomicConverterContract.estimate.sTokenToStokenOutput
+        method = atomicConverterContract.sTokenToStokenOutput
+        const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
+        const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
+        args = [inputKey, dependentValueMaximum, outputKey, independentValueParsed, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
         value = ethers.constants.Zero
       }
     }
-    console.log("hereeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee")
     console.log(args)
+    console.log("value:" + value)
     console.log("SWAP TYPE:" + swapType)
     //const estimatedGasLimit = await estimate(...args, { value })
     const estimatedGasLimit = ethers.utils.bigNumberify(6000000)
-    console.log("estimatedGasLimit:" + estimatedGasLimit)
+    //console.log("estimatedGasLimit:" + estimatedGasLimit)
     method(...args, { value, gasLimit: calculateGasMargin(estimatedGasLimit, GAS_MARGIN) }).then(response => {
       addTransaction(response)
     })
   }
-  /*
-  async function onSwap() {
-    const deadline = Math.ceil(Date.now() / 1000) + DEADLINE_FROM_NOW
-
-    let estimate, method, args, value
-    if (independentField === INPUT) {
-      ReactGA.event({
-        category: `${swapType}`,
-        action: sending ? 'TransferInput' : 'SwapInput'
-      })
-
-      if (swapType === ETH_TO_TOKEN) {
-        estimate = sending ? contract.estimate.ethToTokenTransferInput : contract.estimate.ethToTokenSwapInput
-        method = sending ? contract.ethToTokenTransferInput : contract.ethToTokenSwapInput
-        args = sending ? [dependentValueMinumum, deadline, recipient.address] : [dependentValueMinumum, deadline]
-        value = independentValueParsed
-      } else if (swapType === TOKEN_TO_ETH) {
-        estimate = sending ? contract.estimate.tokenToEthTransferInput : contract.estimate.tokenToEthSwapInput
-        method = sending ? contract.tokenToEthTransferInput : contract.tokenToEthSwapInput
-        args = sending
-          ? [independentValueParsed, dependentValueMinumum, deadline, recipient.address]
-          : [independentValueParsed, dependentValueMinumum, deadline]
-        value = ethers.constants.Zero
-      } else if (swapType === TOKEN_TO_TOKEN) {
-        estimate = sending ? contract.estimate.tokenToTokenTransferInput : contract.estimate.tokenToTokenSwapInput
-        method = sending ? contract.tokenToTokenTransferInput : contract.tokenToTokenSwapInput
-        args = sending
-          ? [
-              independentValueParsed,
-              dependentValueMinumum,
-              ethers.constants.One,
-              deadline,
-              recipient.address,
-              outputCurrency
-            ]
-          : [independentValueParsed, dependentValueMinumum, ethers.constants.One, deadline, outputCurrency]
-        value = ethers.constants.Zero
-      }
-    } else if (independentField === OUTPUT) {
-      ReactGA.event({
-        category: `${swapType}`,
-        action: sending ? 'TransferOutput' : 'SwapOutput'
-      })
-
-      if (swapType === ETH_TO_TOKEN) {
-        estimate = sending ? contract.estimate.ethToTokenTransferOutput : contract.estimate.ethToTokenSwapOutput
-        method = sending ? contract.ethToTokenTransferOutput : contract.ethToTokenSwapOutput
-        args = sending ? [independentValueParsed, deadline, recipient.address] : [independentValueParsed, deadline]
-        value = dependentValueMaximum
-      } else if (swapType === TOKEN_TO_ETH) {
-        estimate = sending ? contract.estimate.tokenToEthTransferOutput : contract.estimate.tokenToEthSwapOutput
-        method = sending ? contract.tokenToEthTransferOutput : contract.tokenToEthSwapOutput
-        args = sending
-          ? [independentValueParsed, dependentValueMaximum, deadline, recipient.address]
-          : [independentValueParsed, dependentValueMaximum, deadline]
-        value = ethers.constants.Zero
-      } else if (swapType === TOKEN_TO_TOKEN) {
-        estimate = sending ? contract.estimate.tokenToTokenTransferOutput : contract.estimate.tokenToTokenSwapOutput
-        method = sending ? contract.tokenToTokenTransferOutput : contract.tokenToTokenSwapOutput
-        args = sending
-          ? [
-              independentValueParsed,
-              dependentValueMaximum,
-              ethers.constants.MaxUint256,
-              deadline,
-              recipient.address,
-              outputCurrency
-            ]
-          : [independentValueParsed, dependentValueMaximum, ethers.constants.MaxUint256, deadline, outputCurrency]
-        value = ethers.constants.Zero
-      }
-    }
-
-    const estimatedGasLimit = await estimate(...args, { value })
-    method(...args, { value, gasLimit: calculateGasMargin(estimatedGasLimit, GAS_MARGIN) }).then(response => {
-      addTransaction(response)
-    })
-  }
-*/
+  
   const [customSlippageError, setcustomSlippageError] = useState('')
 
   const allBalances = useFetchAllBalances()

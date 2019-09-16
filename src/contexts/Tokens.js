@@ -33,19 +33,19 @@ const INITIAL_TOKENS_CONTEXT = {
       [NAME]: 'Synthetix Synth sETH Token',
       [SYMBOL]: 'sETH',
       [DECIMALS]: 18,
-      [EXCHANGE_ADDRESS]: '0x16fc2d1030e7816c6d8d6fce9d7ef06b3937721f'
+      [EXCHANGE_ADDRESS]: '0x1ebec67502a500be28b39ecef5970fbce32a4b73'
     },
     '0x95b92876a85c64Ede4a159161D502FCAeDAFc7C8': {
       [NAME]: 'Synthetix Synth sUSD Token',
       [SYMBOL]: 'sUSD',
       [DECIMALS]: 18,
-      [EXCHANGE_ADDRESS]: '0x16fc2d1030e7816c6d8d6fce9d7ef06b3937721f'
+      [EXCHANGE_ADDRESS]: '0x1ebec67502a500be28b39ecef5970fbce32a4b73'
     },
     '0xeB082E1B4a79a97bA352DC77489C8594d12eFff0': {
       [NAME]: 'Synthetix Synth sBNB Token',
       [SYMBOL]: 'sBNB',
       [DECIMALS]: 18,
-      [EXCHANGE_ADDRESS]: '0x16fc2d1030e7816c6d8d6fce9d7ef06b3937721f'
+      [EXCHANGE_ADDRESS]: '0x1ebec67502a500be28b39ecef5970fbce32a4b73'
     },
   }
 }
