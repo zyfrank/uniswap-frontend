@@ -34,7 +34,7 @@ const ETH_TO_OTHERSTOKEN = 5
 const OTHERSTOKEN_TO_ETH = 6
 const STOKEN_TO_STOKEN = 7 
 
-const ATOMIC_CONVERT_ADDR = '0x1ebec67502a500be28b39ecef5970fbce32a4b73'
+const ATOMIC_CONVERT_ADDR = '0xb2667bb33a345db595a961baf710ec4d55e028e4'
 
 // denominated in bips
 const ALLOWED_SLIPPAGE_DEFAULT = 100
@@ -468,38 +468,43 @@ export default function ExchangePage({ initialCurrency, sending }) {
       if (swapType === ETH_TO_SETH) {
         estimate = atomicConverterContract.estimate.ethToSethInput
         method = atomicConverterContract.ethToSethInput
-        args = [dependentValueMinumum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = sending
+          ? [dependentValueMinumum, deadline, recipient.address]
+          : [dependentValueMinumum, deadline, ethers.constants.AddressZero]
         value = independentValueParsed
       } else if (swapType === SETH_TO_ETH) {
         estimate = atomicConverterContract.estimate.sEthToEthInput
         method = atomicConverterContract.sEthToEthInput
-        args = [independentValueParsed, dependentValueMinumum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = sending
+          ? [independentValueParsed, dependentValueMinumum, deadline, recipient.address]
+          : [independentValueParsed, dependentValueMinumum, deadline, ethers.constants.AddressZero]
         value = ethers.constants.Zero
       } else if (swapType === ETH_TO_OTHERSTOKEN) {
         
         estimate = atomicConverterContract.estimate.ethToOtherTokenInput
         method = atomicConverterContract.ethToOtherTokenInput
-      //  console.log("outputSymbol:" + outputSymbol)
-        //console.log("dependentValueMinumum:" + dependentValueMinumum)
         const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
-        //args = [ethers.utils.bigNumberify(100000), outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
-        args = [dependentValueMinumum, outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = sending
+          ? [dependentValueMinumum, outputKey, deadline, recipient.address]
+          : [dependentValueMinumum, outputKey, deadline, ethers.constants.AddressZero]
         value = independentValueParsed
 
       }else if (swapType === OTHERSTOKEN_TO_ETH) {
         estimate = atomicConverterContract.estimate.otherTokenToEthInput
         method = atomicConverterContract.otherTokenToEthInput
         const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
-        args = [inputKey, independentValueParsed, dependentValueMinumum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
-        
+        args = sending
+          ? [inputKey, independentValueParsed, dependentValueMinumum, deadline, recipient.address]
+          : [inputKey, independentValueParsed, dependentValueMinumum, deadline, ethers.constants.AddressZero]
         value = ethers.constants.Zero
-
       }else if (swapType === STOKEN_TO_STOKEN){
         estimate = atomicConverterContract.estimate.sTokenToStokenInput
         method = atomicConverterContract.sTokenToStokenInput
         const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
         const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
-        args = [inputKey, independentValueParsed, outputKey, dependentValueMinumum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = sending
+          ? [inputKey, independentValueParsed, outputKey, dependentValueMinumum, deadline, recipient.address]
+          : [inputKey, independentValueParsed, outputKey, dependentValueMinumum, deadline, ethers.constants.AddressZero]
         value = ethers.constants.Zero
       }
     } else if (independentField === OUTPUT) {
@@ -511,37 +516,41 @@ export default function ExchangePage({ initialCurrency, sending }) {
       if (swapType === ETH_TO_SETH) {
         estimate = atomicConverterContract.estimate.ethToSethOutput
         method = atomicConverterContract.ethToSethOutput
-        args = [independentValueParsed, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = sending
+          ? [independentValueParsed, deadline, recipient.address]
+          : [independentValueParsed, deadline, ethers.constants.AddressZero]
         value = dependentValueMaximum
       } else if (swapType === SETH_TO_ETH) {
-
         estimate = atomicConverterContract.estimate.sEthToEthOutput
         method = atomicConverterContract.sEthToEthOutput
-        args = [independentValueParsed, dependentValueMaximum, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = sending
+          ? [independentValueParsed, dependentValueMaximum, deadline, recipient.address]
+          : [independentValueParsed, dependentValueMaximum, deadline, ethers.constants.AddressZero]
         value = ethers.constants.Zero
       } else if (swapType === ETH_TO_OTHERSTOKEN) {
         estimate = atomicConverterContract.estimate.ethToOtherTokenOutput
         method = atomicConverterContract.ethToOtherTokenOutput
-      //  console.log("outputSymbol:" + outputSymbol)
-       // console.log("dependentValueMinumum:" + dependentValueMinumum)
         const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
-        //args = [ethers.utils.bigNumberify(100000), outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
-        args = [dependentValueMaximum, outputKey, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = sending
+          ? [dependentValueMaximum, outputKey, deadline, recipient.address]
+          : [dependentValueMaximum, outputKey, deadline, ethers.constants.AddressZero]
         value = independentValueParsed
-
       }else if (swapType === OTHERSTOKEN_TO_ETH) {
         estimate = atomicConverterContract.estimate.otherTokenToEthOutput
         method = atomicConverterContract.otherTokenToEthOutput
         const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
-        args = [inputKey, dependentValueMaximum, independentValueParsed, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]        
+        args = sending
+          ? [inputKey, dependentValueMaximum, independentValueParsed, deadline, recipient.address] 
+          : [inputKey, dependentValueMaximum, independentValueParsed, deadline, ethers.constants.AddressZero]
         value = ethers.constants.Zero
-
       }else if (swapType === STOKEN_TO_STOKEN){
         estimate = atomicConverterContract.estimate.sTokenToStokenOutput
         method = atomicConverterContract.sTokenToStokenOutput
         const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
         const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
-        args = [inputKey, dependentValueMaximum, outputKey, independentValueParsed, deadline, "0xB79A68A0a101b2B9737aABcFF3f2767536Cd3dbd"]
+        args = sending
+          ? [inputKey, dependentValueMaximum, outputKey, independentValueParsed, deadline, recipient.address]
+          : [inputKey, dependentValueMaximum, outputKey, independentValueParsed, deadline, ethers.constants.AddressZero]
         value = ethers.constants.Zero
       }
     }

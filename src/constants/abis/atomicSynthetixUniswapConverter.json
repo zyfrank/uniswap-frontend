@@ -3,12 +3,12 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "minToken",
+				"name": "sEthSold",
 				"type": "uint256"
 			},
 			{
-				"name": "boughtCurrencyKey",
-				"type": "bytes4"
+				"name": "minEth",
+				"type": "uint256"
 			},
 			{
 				"name": "deadline",
@@ -19,7 +19,61 @@
 				"type": "address"
 			}
 		],
-		"name": "ethToOtherTokenInput",
+		"name": "sEthToEthInput",
+		"outputs": [
+			{
+				"name": "ethAmt",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "src",
+				"type": "bytes4"
+			},
+			{
+				"name": "srcAmt",
+				"type": "uint256"
+			},
+			{
+				"name": "dst",
+				"type": "bytes4"
+			}
+		],
+		"name": "inputPrice",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "minSeth",
+				"type": "uint256"
+			},
+			{
+				"name": "deadline",
+				"type": "uint256"
+			},
+			{
+				"name": "recipient",
+				"type": "address"
+			}
+		],
+		"name": "ethToSethInput",
 		"outputs": [
 			{
 				"name": "",
@@ -62,11 +116,29 @@
 		"type": "function"
 	},
 	{
+		"constant": true,
+		"inputs": [],
+		"name": "synFeePool",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"constant": false,
 		"inputs": [
 			{
-				"name": "minSeth",
+				"name": "minToken",
 				"type": "uint256"
+			},
+			{
+				"name": "boughtCurrencyKey",
+				"type": "bytes4"
 			},
 			{
 				"name": "deadline",
@@ -77,10 +149,10 @@
 				"type": "address"
 			}
 		],
-		"name": "ethToSethInput",
+		"name": "ethToOtherTokenInput",
 		"outputs": [
 			{
-				"name": "sEthAmt",
+				"name": "",
 				"type": "uint256"
 			}
 		],
@@ -89,30 +161,22 @@
 		"type": "function"
 	},
 	{
-		"constant": false,
+		"constant": true,
 		"inputs": [
 			{
-				"name": "sethBought",
-				"type": "uint256"
-			},
+				"name": "",
+				"type": "bytes4"
+			}
+		],
+		"name": "synthsAddrs",
+		"outputs": [
 			{
-				"name": "deadline",
-				"type": "uint256"
-			},
-			{
-				"name": "recipient",
+				"name": "",
 				"type": "address"
 			}
 		],
-		"name": "ethToSethOutput",
-		"outputs": [
-			{
-				"name": "ethAmt",
-				"type": "uint256"
-			}
-		],
-		"payable": true,
-		"stateMutability": "payable",
+		"payable": false,
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -127,7 +191,11 @@
 				"type": "uint256"
 			},
 			{
-				"name": "minEth",
+				"name": "destinationCurrencyKey",
+				"type": "bytes4"
+			},
+			{
+				"name": "minDstAmt",
 				"type": "uint256"
 			},
 			{
@@ -139,7 +207,60 @@
 				"type": "address"
 			}
 		],
-		"name": "otherTokenToEthInput",
+		"name": "sTokenToStokenInput",
+		"outputs": [
+			{
+				"name": "",
+				"type": "bool"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "use",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "sourceCurrencyKey",
+				"type": "bytes4"
+			},
+			{
+				"name": "maxSourceAmount",
+				"type": "uint256"
+			},
+			{
+				"name": "destinationCurrencyKey",
+				"type": "bytes4"
+			},
+			{
+				"name": "boughtDstAmt",
+				"type": "uint256"
+			},
+			{
+				"name": "deadline",
+				"type": "uint256"
+			},
+			{
+				"name": "recipient",
+				"type": "address"
+			}
+		],
+		"name": "sTokenToStokenOutput",
 		"outputs": [
 			{
 				"name": "",
@@ -148,6 +269,78 @@
 		],
 		"payable": false,
 		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "synthetix",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "ethBought",
+				"type": "uint256"
+			},
+			{
+				"name": "maxSethSold",
+				"type": "uint256"
+			},
+			{
+				"name": "deadline",
+				"type": "uint256"
+			},
+			{
+				"name": "recipient",
+				"type": "address"
+			}
+		],
+		"name": "sEthToEthOutput",
+		"outputs": [
+			{
+				"name": "sEthAmt",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [
+			{
+				"name": "src",
+				"type": "bytes4"
+			},
+			{
+				"name": "dst",
+				"type": "bytes4"
+			},
+			{
+				"name": "dstAmt",
+				"type": "uint256"
+			}
+		],
+		"name": "outputPrice",
+		"outputs": [
+			{
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -189,7 +382,11 @@
 		"constant": false,
 		"inputs": [
 			{
-				"name": "sEthSold",
+				"name": "sourceCurrencyKey",
+				"type": "bytes4"
+			},
+			{
+				"name": "sourceAmount",
 				"type": "uint256"
 			},
 			{
@@ -205,112 +402,7 @@
 				"type": "address"
 			}
 		],
-		"name": "sEthToEthInput",
-		"outputs": [
-			{
-				"name": "ethAmt",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "ethBought",
-				"type": "uint256"
-			},
-			{
-				"name": "maxSethSold",
-				"type": "uint256"
-			},
-			{
-				"name": "deadline",
-				"type": "uint256"
-			},
-			{
-				"name": "recipient",
-				"type": "address"
-			}
-		],
-		"name": "sEthToEthOutput",
-		"outputs": [
-			{
-				"name": "sEthAmt",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "sourceCurrencyKey",
-				"type": "bytes4"
-			},
-			{
-				"name": "sourceAmount",
-				"type": "uint256"
-			},
-			{
-				"name": "destinationCurrencyKey",
-				"type": "bytes4"
-			},
-			{
-				"name": "minDstAmt",
-				"type": "uint256"
-			},
-			{
-				"name": "deadline",
-				"type": "uint256"
-			},
-			{
-				"name": "destinationAddress",
-				"type": "address"
-			}
-		],
-		"name": "sTokenToStokenInput",
-		"outputs": [
-			{
-				"name": "",
-				"type": "bool"
-			}
-		],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"constant": false,
-		"inputs": [
-			{
-				"name": "sourceCurrencyKey",
-				"type": "bytes4"
-			},
-			{
-				"name": "maxSourceAmount",
-				"type": "uint256"
-			},
-			{
-				"name": "destinationCurrencyKey",
-				"type": "bytes4"
-			},
-			{
-				"name": "boughtDstAmt",
-				"type": "uint256"
-			},
-			{
-				"name": "destinationAddress",
-				"type": "address"
-			}
-		],
-		"name": "sTokenToStokenOutput",
+		"name": "otherTokenToEthInput",
 		"outputs": [
 			{
 				"name": "",
@@ -319,71 +411,6 @@
 		],
 		"payable": false,
 		"stateMutability": "nonpayable",
-		"type": "function"
-	},
-	{
-		"payable": true,
-		"stateMutability": "payable",
-		"type": "fallback"
-	},
-	{
-		"inputs": [],
-		"payable": false,
-		"stateMutability": "nonpayable",
-		"type": "constructor"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "src",
-				"type": "bytes4"
-			},
-			{
-				"name": "srcAmt",
-				"type": "uint256"
-			},
-			{
-				"name": "dst",
-				"type": "bytes4"
-			}
-		],
-		"name": "inputPrice",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "src",
-				"type": "bytes4"
-			},
-			{
-				"name": "dst",
-				"type": "bytes4"
-			},
-			{
-				"name": "dstAmt",
-				"type": "uint256"
-			}
-		],
-		"name": "outputPrice",
-		"outputs": [
-			{
-				"name": "",
-				"type": "uint256"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
 		"type": "function"
 	},
 	{
@@ -401,17 +428,30 @@
 		"type": "function"
 	},
 	{
-		"constant": true,
-		"inputs": [],
-		"name": "synFeePool",
-		"outputs": [
+		"constant": false,
+		"inputs": [
 			{
-				"name": "",
+				"name": "sethBought",
+				"type": "uint256"
+			},
+			{
+				"name": "deadline",
+				"type": "uint256"
+			},
+			{
+				"name": "recipient",
 				"type": "address"
 			}
 		],
-		"payable": false,
-		"stateMutability": "view",
+		"name": "ethToSethOutput",
+		"outputs": [
+			{
+				"name": "ethAmt",
+				"type": "uint256"
+			}
+		],
+		"payable": true,
+		"stateMutability": "payable",
 		"type": "function"
 	},
 	{
@@ -429,50 +469,14 @@
 		"type": "function"
 	},
 	{
-		"constant": true,
 		"inputs": [],
-		"name": "synthetix",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
 		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
+		"stateMutability": "nonpayable",
+		"type": "constructor"
 	},
 	{
-		"constant": true,
-		"inputs": [
-			{
-				"name": "",
-				"type": "bytes4"
-			}
-		],
-		"name": "synthsAddrs",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
-		"inputs": [],
-		"name": "use",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
+		"payable": true,
+		"stateMutability": "payable",
+		"type": "fallback"
 	}
 ]
