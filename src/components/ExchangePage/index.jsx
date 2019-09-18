@@ -14,27 +14,24 @@ import OversizedPanel from '../OversizedPanel'
 import TransactionDetails from '../TransactionDetails'
 import ArrowDown from '../../assets/svg/SVGArrowDown'
 import { amountFormatter, calculateGasMargin } from '../../utils'
-import { useExchangeContract, useAtomicSynthetixUniswapConverterContract } from '../../hooks'
+import { useAtomicSynthetixUniswapConverterContract } from '../../hooks'
 import { useTokenDetails } from '../../contexts/Tokens'
 import { useTransactionAdder } from '../../contexts/Transactions'
-import { useAddressBalance, useExchangeReserves } from '../../contexts/Balances'
+import { useAddressBalance } from '../../contexts/Balances'
 import { useFetchAllBalances } from '../../contexts/AllBalances'
 import { useAddressAllowance } from '../../contexts/Allowances'
 
 const INPUT = 0
 const OUTPUT = 1
 
-const ETH_TO_TOKEN = 0
-const TOKEN_TO_ETH = 1
-const TOKEN_TO_TOKEN = 2
+const ETH_TO_SETH = 0
+const SETH_TO_ETH = 1
+const ETH_TO_OTHERSTOKEN = 2
+const OTHERSTOKEN_TO_ETH = 3
+const STOKEN_TO_STOKEN = 4
 
-const ETH_TO_SETH = 3
-const SETH_TO_ETH = 4
-const ETH_TO_OTHERSTOKEN = 5
-const OTHERSTOKEN_TO_ETH = 6
-const STOKEN_TO_STOKEN = 7 
-
-const ATOMIC_CONVERT_ADDR = '0xb2667bb33a345db595a961baf710ec4d55e028e4'
+const SETH_UNISWAP_EXCHANGE_ADDR = '0xA1b571D290faB6DA975b7A95Eef80788ba85F4C6'
+const ATOMIC_CONVERT_ADDR = '0x1b8ee97d4159e7ad029bd69bf38b5190b2d5ec7d'
 
 // denominated in bips
 const ALLOWED_SLIPPAGE_DEFAULT = 100
@@ -185,6 +182,12 @@ function swapStateReducer(state, action) {
         dependentValue: action.payload
       }
     }
+    case 'UPDATE_DEPENDENT_RATE': {
+      return {
+        ...state,
+        dependentEthSethRate: action.payload
+      }
+    }
     default: {
       return getInitialSwapState()
     }
@@ -217,29 +220,40 @@ function getExchangeRate(inputValue, inputDecimals, outputValue, outputDecimals,
     }
   } catch {}
 }
-
+/*
 function getMarketRate(
   swapType,
-  inputReserveETH,
-  inputReserveToken,
+  reserveETH,
+  reserveSEthToken,
   inputDecimals,
-  outputReserveETH,
-  outputReserveToken,
+ // outputReserveETH,
+ // outputReserveToken,
   outputDecimals,
   invert = false
 ) {
-  if (swapType === ETH_TO_TOKEN) {
-    return getExchangeRate(outputReserveETH, 18, outputReserveToken, outputDecimals, invert)
-  } else if (swapType === TOKEN_TO_ETH) {
-    return getExchangeRate(inputReserveToken, inputDecimals, inputReserveETH, 18, invert)
-  } else if (swapType === TOKEN_TO_TOKEN) {
-    const factor = ethers.utils.bigNumberify(10).pow(ethers.utils.bigNumberify(18))
-    const firstRate = getExchangeRate(inputReserveToken, inputDecimals, inputReserveETH, 18)
-    const secondRate = getExchangeRate(outputReserveETH, 18, outputReserveToken, outputDecimals)
-    try {
-      return !!(firstRate && secondRate) ? firstRate.mul(secondRate).div(factor) : undefined
-    } catch {}
+  console.log("inputDecimals:" + inputDecimals + " outputDecimals:" + outputDecimals)
+  if ((swapType === ETH_TO_SETH) | (swapType === ETH_TO_OTHERSTOKEN)){
+    return getExchangeRate(reserveETH, 18, reserveSEthToken, outputDecimals, invert)
+  }else if ((swapType === SETH_TO_ETH) | (swapType === OTHERSTOKEN_TO_ETH)){
+    return getExchangeRate(reserveSEthToken, inputDecimals, reserveETH, 18, invert)
   }
+  return undefined
+ 
+}
+
+*/
+function getMarketRate(
+  swapType,
+  reserveETH,
+  reserveSEthToken,
+  invert = false
+) {
+  if ((swapType === ETH_TO_SETH) | (swapType === ETH_TO_OTHERSTOKEN)){
+    return getExchangeRate(reserveETH, 18, reserveSEthToken, 18, invert)
+  }else if ((swapType === SETH_TO_ETH) | (swapType === OTHERSTOKEN_TO_ETH)){
+    return getExchangeRate(reserveSEthToken, 18, reserveETH, 18, invert)
+  }
+  return undefined
 }
 
 export default function ExchangePage({ initialCurrency, sending }) {
@@ -262,37 +276,31 @@ export default function ExchangePage({ initialCurrency, sending }) {
   // core swap state
   const [swapState, dispatchSwapState] = useReducer(swapStateReducer, initialCurrency, getInitialSwapState)
 
-  const { independentValue, dependentValue, independentField, inputCurrency, outputCurrency } = swapState
+  const { independentValue, dependentValue, independentField, inputCurrency, outputCurrency, dependentEthSethRate} = swapState
 
   const [recipient, setRecipient] = useState({ address: '', name: '' })
   const [recipientError, setRecipientError] = useState()
 
-
-
   // get decimals and exchange address for each of the currency types
-  const { symbol: inputSymbol, decimals: inputDecimals, exchangeAddress: inputExchangeAddress } = useTokenDetails(
+  const { symbol: inputSymbol, decimals: inputDecimals} = useTokenDetails(
     inputCurrency
   )
-  const { symbol: outputSymbol, decimals: outputDecimals, exchangeAddress: outputExchangeAddress } = useTokenDetails(
+  const { symbol: outputSymbol, decimals: outputDecimals} = useTokenDetails(
     outputCurrency
   )
 
   // get swap type from the currency types
   const swapType = getSwapType(inputSymbol, outputSymbol)
 
-  //const inputExchangeContract = useExchangeContract(inputExchangeAddress)
-  //const outputExchangeContract = useExchangeContract(outputExchangeAddress)
-  //const sEthExchangeContract = useExchangeContract(SETH_UNISWAP_EXCHANGE_ADDR)
   const atomicConverterContract = useAtomicSynthetixUniswapConverterContract(ATOMIC_CONVERT_ADDR)
-
- // const contract = swapType === ETH_TO_TOKEN ? outputExchangeContract : inputExchangeContract
 
   // get input allowance
   const inputAllowance = useAddressAllowance(account, inputCurrency, ATOMIC_CONVERT_ADDR)
 
-  // fetch reserves for each of the currency types
-  const { reserveETH: inputReserveETH, reserveToken: inputReserveToken } = useExchangeReserves(inputCurrency)
-  const { reserveETH: outputReserveETH, reserveToken: outputReserveToken } = useExchangeReserves(outputCurrency)
+  // fetch reserves for SETH
+  //const { reserveETH, reserveToken} = useExchangeReserves(SETH_UNISWAP_EXCHANGE_ADDR)
+  const reserveETH = useAddressBalance(SETH_UNISWAP_EXCHANGE_ADDR, 'ETH')
+  const reserveToken = useAddressBalance(SETH_UNISWAP_EXCHANGE_ADDR, '0x3731ab0E9FeEE3Ef0C427E874265E8F9a9111e27')
 
   // get balances for each of the currency types
   const inputBalance = useAddressBalance(account, inputCurrency)
@@ -345,7 +353,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
   // calculate slippage from target rate
   const { minimum: dependentValueMinumum, maximum: dependentValueMaximum } = calculateSlippageBounds(
     dependentValue,
-    swapType === TOKEN_TO_TOKEN,
+    swapType === STOKEN_TO_STOKEN,
     tokenAllowedSlippageBig,
     allowedSlippageBig
   )
@@ -377,62 +385,98 @@ export default function ExchangePage({ initialCurrency, sending }) {
   useEffect(() => {
     const amount = independentValueParsed
         
-        try {
-                const srcBytes4 = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
-      //          console.log("srcBytes4:" + srcBytes4)
-                const dstBytes4 = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
-    //            console.log("dstBytes4:" + dstBytes4)
-                let method, args
-                if (independentField === INPUT){
-                  method = atomicConverterContract.inputPrice
-                  args = [srcBytes4, amount, dstBytes4]
-                }else{
-                  method = atomicConverterContract.outputPrice
-                  args = [srcBytes4, dstBytes4, amount]
-                }
-                method(...args).then(response => {
-                       const resultAmt = ethers.utils.bigNumberify(response)
-                       if (resultAmt.lte(ethers.constants.Zero)) {
-                           throw Error()
-                        }
-                       dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: resultAmt})
-                })
-        } catch {
-          setIndependentError(t('insufficientLiquidity'))
+    try {
+      const ethBytes4 = ethers.utils.formatBytes32String('ETH').substring(0,10)
+      const sEthBytes4 = ethers.utils.formatBytes32String('sETH').substring(0,10)
+      const srcBytes4 = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
+      const dstBytes4 = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
+      let method, args, args2
+      if (independentField === INPUT){
+        console.log("1111111111111111")
+        method = atomicConverterContract.inputPrice
+        args = [srcBytes4, amount, dstBytes4]
+        if (inputSymbol === 'ETH'){
+          args2 = [ethBytes4, amount, sEthBytes4]
+        }else if (inputSymbol === 'sETH'){
+          args2 = [sEthBytes4, amount, ethBytes4]
         }
-        return () => {
-          dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: '' })
+      }else{
+        console.log("22222222222222222")
+        method = atomicConverterContract.outputPrice
+        args = [srcBytes4, dstBytes4, amount]
+        if (inputSymbol === 'ETH'){
+          args2 = [ethBytes4, sEthBytes4, amount]
+        }else if (inputSymbol === 'sETH'){
+          args2 = [sEthBytes4, ethBytes4, amount]
         }
-      
-//    } 
+      }
+      method(...args).then(response => {
+        const resultAmt = ethers.utils.bigNumberify(response)
+        if (resultAmt.lte(ethers.constants.Zero)) {
+          throw Error()
+        }
+        dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: resultAmt})
+      })
+      if (args2) {
+        method(...args2).then(response => {
+          const resultAmt = ethers.utils.bigNumberify(response)
+          if (resultAmt.lte(ethers.constants.Zero)) {
+            throw Error()
+          }
+          dispatchSwapState({ type: 'UPDATE_DEPENDENT_RATE', payload: resultAmt})
+        })
+      } 
+    } catch {
+      setIndependentError(t('insufficientLiquidity'))
+    }
+    return () => {
+      dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: '' })
+    }
   }, [
     independentValueParsed,
     swapType,
-    outputReserveETH,
-    outputReserveToken,
-    inputReserveETH,
-    inputReserveToken,
     independentField,
+    inputSymbol,
+    outputSymbol,
+    atomicConverterContract,
     t
   ])
 
   const [inverted, setInverted] = useState(false)
-  const exchangeRate = getExchangeRate(inputValueParsed, inputDecimals, outputValueParsed, outputDecimals)
+  const ethSethExchangeRate = getExchangeRate(inputValueParsed, inputDecimals, dependentEthSethRate, outputDecimals)
+  const exchangeRate  = getExchangeRate(inputValueParsed, inputDecimals, outputValueParsed, outputDecimals)
+
+  //const exchangeRate = getExchangeRate(inputValueParsed, inputDecimals, outputValueParsed, outputDecimals)
   const exchangeRateInverted = getExchangeRate(inputValueParsed, inputDecimals, outputValueParsed, outputDecimals, true)
 
   const marketRate = getMarketRate(
     swapType,
-    inputReserveETH,
-    inputReserveToken,
+    reserveETH,
+    reserveToken
+  )
+/*
+    const marketRate = getMarketRate(
+    swapType,
+    reserveETH,
+    reserveToken,
     inputDecimals,
-    outputReserveETH,
-    outputReserveToken,
+   // outputReserveETH,
+   // outputReserveToken,
     outputDecimals
   )
-
+*/
+  
+  console.log("dependentEthSethRate:           " + dependentEthSethRate)
+  console.log("independentValue    :           " + independentValueParsed)
+  console.log("dependentValue:                 " + dependentValue)
+  console.log("exchangeRate:                   "+exchangeRate)
+  console.log("exchangeRateInvert:             "+exchangeRateInverted)
+  console.log("exchanethSethExchangeRategeRate:"+ethSethExchangeRate)
+  console.log("marketRate:                     " + marketRate)
+  
   const percentSlippage =
-    exchangeRate && marketRate
-      ? exchangeRate
+    ethSethExchangeRate && marketRate
+      ? ethSethExchangeRate
           .sub(marketRate)
           .abs()
           .mul(ethers.utils.bigNumberify(10).pow(ethers.utils.bigNumberify(18)))
