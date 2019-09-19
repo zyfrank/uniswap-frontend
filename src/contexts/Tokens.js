@@ -25,18 +25,19 @@ const ETH = {
 }
 
 const INITIAL_TOKENS_CONTEXT = {
+
     4: {
-    '0x3731ab0E9FeEE3Ef0C427E874265E8F9a9111e27': {
+    '0x2a27a3113368836b2BE598a4BB9a0d4D7A734305': {
       [NAME]: 'Synthetix Synth sETH Token',
       [SYMBOL]: 'sETH',
       [DECIMALS]: 18
     },
-    '0x6C52d2Ee72dA1FC67a601B29b6AB42A74bb02f0a': {
+    '0x088256945480c884C067a8Bc98A72A1C984f826B': {
       [NAME]: 'Synthetix Synth sAUD Token',
       [SYMBOL]: 'sAUD',
       [DECIMALS]: 18
     },
-    '0xeB082E1B4a79a97bA352DC77489C8594d12eFff0': {
+    '0x406555dbF02e9E4df9AdeAeC9DA76ABeED8C1BC3': {
       [NAME]: 'Synthetix Synth sBNB Token',
       [SYMBOL]: 'sBNB',
       [DECIMALS]: 18
@@ -83,6 +84,7 @@ const INITIAL_TOKENS_CONTEXT = {
     },
     '0x95b92876a85c64Ede4a159161D502FCAeDAFc7C8': {
       [NAME]: 'Synthetix Synth sUSD Token',
+      [NAME]: 'Synth sUSD',
       [SYMBOL]: 'sUSD',
       [DECIMALS]: 18
     },
@@ -102,7 +104,7 @@ const INITIAL_TOKENS_CONTEXT = {
       [DECIMALS]: 18
     },
 
-    '0x55F2Ec337059E6Ff2165C6037231dE44db1B2E9c': {
+    '0xC1701AbD559FC263829CA3917d03045F95b5224A': {
       [NAME]: 'Synthetix Synth iBNB Token',
       [SYMBOL]: 'iBNB',
       [DECIMALS]: 18
