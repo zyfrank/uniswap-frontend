@@ -20,7 +20,7 @@ import { useTransactionAdder } from '../../contexts/Transactions'
 import { useAddressBalance } from '../../contexts/Balances'
 import { useFetchAllBalances } from '../../contexts/AllBalances'
 import { useAddressAllowance } from '../../contexts/Allowances'
-
+import {ATOMIC_CONVERT_ADDR, SETH_UNISWAP_EXCHANGE_ADDR} from '../../constants'
 const INPUT = 0
 const OUTPUT = 1
 
@@ -29,9 +29,6 @@ const SETH_TO_ETH = 1
 const ETH_TO_OTHERSTOKEN = 2
 const OTHERSTOKEN_TO_ETH = 3
 const STOKEN_TO_STOKEN = 4
-
-const SETH_UNISWAP_EXCHANGE_ADDR = '0xA1b571D290faB6DA975b7A95Eef80788ba85F4C6'
-const ATOMIC_CONVERT_ADDR = '0x1b8ee97d4159e7ad029bd69bf38b5190b2d5ec7d'
 
 // denominated in bips
 const ALLOWED_SLIPPAGE_DEFAULT = 100
@@ -220,28 +217,7 @@ function getExchangeRate(inputValue, inputDecimals, outputValue, outputDecimals,
     }
   } catch {}
 }
-/*
-function getMarketRate(
-  swapType,
-  reserveETH,
-  reserveSEthToken,
-  inputDecimals,
- // outputReserveETH,
- // outputReserveToken,
-  outputDecimals,
-  invert = false
-) {
-  console.log("inputDecimals:" + inputDecimals + " outputDecimals:" + outputDecimals)
-  if ((swapType === ETH_TO_SETH) | (swapType === ETH_TO_OTHERSTOKEN)){
-    return getExchangeRate(reserveETH, 18, reserveSEthToken, outputDecimals, invert)
-  }else if ((swapType === SETH_TO_ETH) | (swapType === OTHERSTOKEN_TO_ETH)){
-    return getExchangeRate(reserveSEthToken, inputDecimals, reserveETH, 18, invert)
-  }
-  return undefined
- 
-}
 
-*/
 function getMarketRate(
   swapType,
   reserveETH,
@@ -392,7 +368,6 @@ export default function ExchangePage({ initialCurrency, sending }) {
       const dstBytes4 = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
       let method, args, args2
       if (independentField === INPUT){
-        console.log("1111111111111111")
         method = atomicConverterContract.inputPrice
         args = [srcBytes4, amount, dstBytes4]
         if (inputSymbol === 'ETH'){
@@ -401,7 +376,6 @@ export default function ExchangePage({ initialCurrency, sending }) {
           args2 = [sEthBytes4, amount, ethBytes4]
         }
       }else{
-        console.log("22222222222222222")
         method = atomicConverterContract.outputPrice
         args = [srcBytes4, dstBytes4, amount]
         if (inputSymbol === 'ETH'){
@@ -446,7 +420,6 @@ export default function ExchangePage({ initialCurrency, sending }) {
   const ethSethExchangeRate = getExchangeRate(inputValueParsed, inputDecimals, dependentEthSethRate, outputDecimals)
   const exchangeRate  = getExchangeRate(inputValueParsed, inputDecimals, outputValueParsed, outputDecimals)
 
-  //const exchangeRate = getExchangeRate(inputValueParsed, inputDecimals, outputValueParsed, outputDecimals)
   const exchangeRateInverted = getExchangeRate(inputValueParsed, inputDecimals, outputValueParsed, outputDecimals, true)
 
   const marketRate = getMarketRate(
@@ -454,18 +427,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
     reserveETH,
     reserveToken
   )
-/*
-    const marketRate = getMarketRate(
-    swapType,
-    reserveETH,
-    reserveToken,
-    inputDecimals,
-   // outputReserveETH,
-   // outputReserveToken,
-    outputDecimals
-  )
-*/
-  
+
+  /*
   console.log("dependentEthSethRate:           " + dependentEthSethRate)
   console.log("independentValue    :           " + independentValueParsed)
   console.log("dependentValue:                 " + dependentValue)
@@ -473,7 +436,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
   console.log("exchangeRateInvert:             "+exchangeRateInverted)
   console.log("exchanethSethExchangeRategeRate:"+ethSethExchangeRate)
   console.log("marketRate:                     " + marketRate)
-  
+  */
   const percentSlippage =
     ethSethExchangeRate && marketRate
       ? ethSethExchangeRate
@@ -576,16 +539,16 @@ export default function ExchangePage({ initialCurrency, sending }) {
         method = atomicConverterContract.ethToOtherTokenOutput
         const outputKey = ethers.utils.formatBytes32String(outputSymbol).substring(0,10)
         args = sending
-          ? [dependentValueMaximum, outputKey, deadline, recipient.address]
-          : [dependentValueMaximum, outputKey, deadline, ethers.constants.AddressZero]
-        value = independentValueParsed
+          ? [independentValueParsed, outputKey, deadline, recipient.address]
+          : [independentValueParsed, outputKey, deadline, ethers.constants.AddressZero]
+        value = dependentValueMaximum
       }else if (swapType === OTHERSTOKEN_TO_ETH) {
         estimate = atomicConverterContract.estimate.otherTokenToEthOutput
         method = atomicConverterContract.otherTokenToEthOutput
         const inputKey = ethers.utils.formatBytes32String(inputSymbol).substring(0,10)
         args = sending
-          ? [inputKey, dependentValueMaximum, independentValueParsed, deadline, recipient.address] 
-          : [inputKey, dependentValueMaximum, independentValueParsed, deadline, ethers.constants.AddressZero]
+          ? [independentValueParsed, inputKey, dependentValueMaximum, deadline, recipient.address] 
+          : [independentValueParsed, inputKey, dependentValueMaximum, deadline, ethers.constants.AddressZero]
         value = ethers.constants.Zero
       }else if (swapType === STOKEN_TO_STOKEN){
         estimate = atomicConverterContract.estimate.sTokenToStokenOutput
@@ -598,12 +561,10 @@ export default function ExchangePage({ initialCurrency, sending }) {
         value = ethers.constants.Zero
       }
     }
-    console.log(args)
-    console.log("value:" + value)
-    console.log("SWAP TYPE:" + swapType)
-    //const estimatedGasLimit = await estimate(...args, { value })
-    const estimatedGasLimit = ethers.utils.bigNumberify(6000000)
-    //console.log("estimatedGasLimit:" + estimatedGasLimit)
+
+   // const estimatedGasLimit = await estimate(...args, { value })
+    const estimatedGasLimit = ethers.utils.bigNumberify(4000000)
+    console.log("estimatedGasLimit:" + estimatedGasLimit)
     method(...args, { value, gasLimit: calculateGasMargin(estimatedGasLimit, GAS_MARGIN) }).then(response => {
       addTransaction(response)
     })

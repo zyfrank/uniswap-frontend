@@ -25,7 +25,7 @@ import { transparentize } from 'polished'
 import { Spinner } from '../../theme'
 import Circle from '../../assets/images/circle-grey.svg'
 import { useUSDPrice } from '../../contexts/Application'
-
+import { ATOMIC_CONVERT_ADDR } from '../../constants'
 const GAS_MARGIN = ethers.utils.bigNumberify(1000)
 
 const SubCurrencySelect = styled.button`
@@ -288,8 +288,6 @@ export default function CurrencyInputPanel({
   const [modalIsOpen, setModalIsOpen] = useState(false)
 
   const tokenContract = useTokenContract(selectedTokenAddress)
-  const { exchangeAddress: selectedTokenExchangeAddress } = useTokenDetails(selectedTokenAddress)
-
   const pendingApproval = usePendingApproval(selectedTokenAddress)
 
   const addTransaction = useTransactionAdder()
@@ -305,11 +303,11 @@ export default function CurrencyInputPanel({
           <SubCurrencySelect
             onClick={async () => {
               const estimatedGas = await tokenContract.estimate.approve(
-                selectedTokenExchangeAddress,
+                ATOMIC_CONVERT_ADDR,
                 ethers.constants.MaxUint256
               )
               tokenContract
-                .approve(selectedTokenExchangeAddress, ethers.constants.MaxUint256, {
+                .approve(ATOMIC_CONVERT_ADDR, ethers.constants.MaxUint256, {
                   gasLimit: calculateGasMargin(estimatedGas, GAS_MARGIN)
                 })
                 .then(response => {

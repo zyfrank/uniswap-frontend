@@ -1,11 +1,8 @@
 import { ethers } from 'ethers'
 
-import FACTORY_ABI from '../constants/abis/factory'
-import EXCHANGE_ABI from '../constants/abis/exchange'
 import CONVERTER_ABI from '../constants/abis/atomicSynthetixUniswapConverter'
 import ERC20_ABI from '../constants/abis/erc20'
 import ERC20_BYTES32_ABI from '../constants/abis/erc20_bytes32'
-import { FACTORY_ADDRESSES } from '../constants'
 import { formatFixed } from '@uniswap/sdk'
 
 import UncheckedJsonRpcSigner from './signer'
@@ -109,16 +106,6 @@ export function getContract(address, ABI, library, account) {
   return new ethers.Contract(address, ABI, getProviderOrSigner(library, account))
 }
 
-// account is optional
-export function getFactoryContract(networkId, library, account) {
-  return getContract(FACTORY_ADDRESSES[networkId], FACTORY_ABI, library, account)
-}
-
-// account is optional
-export function getExchangeContract(exchangeAddress, library, account) {
-  return getContract(exchangeAddress, EXCHANGE_ABI, library, account)
-}
-
 export function getAtomicSynthetixUniswapConverterContract(converterAddress, library, account) {
   return getContract(converterAddress, CONVERTER_ABI, library, account)
 }
@@ -172,11 +159,6 @@ export async function getTokenDecimals(tokenAddress, library) {
       error.code = ERROR_CODES.TOKEN_DECIMALS
       throw error
     })
-}
-
-// get the exchange address for a token from the factory
-export async function getTokenExchangeAddressFromFactory(tokenAddress, networkId, library) {
-  return getFactoryContract(networkId, library).getExchange(tokenAddress)
 }
 
 // get the ether balance of an address

@@ -26,6 +26,7 @@ ReactGA.pageview(window.location.pathname + window.location.search)
 
 const { NetworkOnlyConnector } = Connectors
 const Injected = new InjectedConnector({ supportedNetworks: [Number(process.env.REACT_APP_NETWORK_ID || '1')] })
+const ATOMIC_CONVERT_ADDR = process.env.ATOMIC_CONVERT_ADDR
 const Network = new NetworkOnlyConnector({ providerURL: process.env.REACT_APP_NETWORK_URL || '' })
 const connectors = { Injected, Network }
 
