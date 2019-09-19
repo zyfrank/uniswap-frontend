@@ -25,6 +25,7 @@ const ETH = {
 }
 
 const INITIAL_TOKENS_CONTEXT = {
+
     4: {
     '0x3731ab0E9FeEE3Ef0C427E874265E8F9a9111e27': {
       [NAME]: 'Synthetix Synth sETH Token',
@@ -83,6 +84,7 @@ const INITIAL_TOKENS_CONTEXT = {
     },
     '0x95b92876a85c64Ede4a159161D502FCAeDAFc7C8': {
       [NAME]: 'Synthetix Synth sUSD Token',
+      [NAME]: 'Synth sUSD',
       [SYMBOL]: 'sUSD',
       [DECIMALS]: 18
     },
