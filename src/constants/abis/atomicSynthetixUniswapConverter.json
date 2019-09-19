@@ -1,6 +1,15 @@
 [
 	{
 		"constant": false,
+		"inputs": [],
+		"name": "acceptOwnership",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
 		"inputs": [
 			{
 				"name": "minToken",
@@ -8,7 +17,7 @@
 			},
 			{
 				"name": "boughtCurrencyKey",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "deadline",
@@ -39,7 +48,7 @@
 			},
 			{
 				"name": "boughtCurrencyKey",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "deadline",
@@ -119,8 +128,22 @@
 		"constant": false,
 		"inputs": [
 			{
+				"name": "_owner",
+				"type": "address"
+			}
+		],
+		"name": "nominateNewOwner",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
 				"name": "srcKey",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "srcAmt",
@@ -159,7 +182,7 @@
 			},
 			{
 				"name": "srcKey",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "maxSrcAmt",
@@ -184,6 +207,35 @@
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "function"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnerNominated",
+		"type": "event"
+	},
+	{
+		"anonymous": false,
+		"inputs": [
+			{
+				"indexed": false,
+				"name": "oldOwner",
+				"type": "address"
+			},
+			{
+				"indexed": false,
+				"name": "newOwner",
+				"type": "address"
+			}
+		],
+		"name": "OwnerChanged",
+		"type": "event"
 	},
 	{
 		"constant": false,
@@ -251,8 +303,64 @@
 		"constant": false,
 		"inputs": [
 			{
+				"name": "_synthetix",
+				"type": "address"
+			}
+		],
+		"name": "setSynthetix",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_synRates",
+				"type": "address"
+			}
+		],
+		"name": "setSynthsExchangeRates",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_synFeePool",
+				"type": "address"
+			}
+		],
+		"name": "setSynthsFeePool",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
+				"name": "_uniswapSethExchange",
+				"type": "address"
+			}
+		],
+		"name": "setUniswapSethExchange",
+		"outputs": [],
+		"payable": false,
+		"stateMutability": "nonpayable",
+		"type": "function"
+	},
+	{
+		"constant": false,
+		"inputs": [
+			{
 				"name": "srcKey",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "srcAmt",
@@ -260,7 +368,7 @@
 			},
 			{
 				"name": "dstKey",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "minDstAmt",
@@ -291,7 +399,7 @@
 		"inputs": [
 			{
 				"name": "srcKey",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "maxSrcAmt",
@@ -299,7 +407,7 @@
 			},
 			{
 				"name": "dstKey",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "boughtDstAmt",
@@ -331,7 +439,12 @@
 		"type": "fallback"
 	},
 	{
-		"inputs": [],
+		"inputs": [
+			{
+				"name": "_owner",
+				"type": "address"
+			}
+		],
 		"payable": false,
 		"stateMutability": "nonpayable",
 		"type": "constructor"
@@ -341,7 +454,7 @@
 		"inputs": [
 			{
 				"name": "src",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "srcAmt",
@@ -349,7 +462,7 @@
 			},
 			{
 				"name": "dst",
-				"type": "bytes4"
+				"type": "bytes32"
 			}
 		],
 		"name": "inputPrice",
@@ -365,14 +478,28 @@
 	},
 	{
 		"constant": true,
+		"inputs": [],
+		"name": "nominatedOwner",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
 		"inputs": [
 			{
 				"name": "src",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "dst",
-				"type": "bytes4"
+				"type": "bytes32"
 			},
 			{
 				"name": "dstAmt",
@@ -384,6 +511,20 @@
 			{
 				"name": "",
 				"type": "uint256"
+			}
+		],
+		"payable": false,
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
+		"constant": true,
+		"inputs": [],
+		"name": "owner",
+		"outputs": [
+			{
+				"name": "",
+				"type": "address"
 			}
 		],
 		"payable": false,
@@ -434,27 +575,8 @@
 	},
 	{
 		"constant": true,
-		"inputs": [
-			{
-				"name": "",
-				"type": "bytes4"
-			}
-		],
-		"name": "synthsAddrs",
-		"outputs": [
-			{
-				"name": "",
-				"type": "address"
-			}
-		],
-		"payable": false,
-		"stateMutability": "view",
-		"type": "function"
-	},
-	{
-		"constant": true,
 		"inputs": [],
-		"name": "use",
+		"name": "uniswapSethExchange",
 		"outputs": [
 			{
 				"name": "",
