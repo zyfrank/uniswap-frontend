@@ -546,10 +546,14 @@ export default function ExchangePage({ initialCurrency, sending }) {
       }
     }
 
-    // const estimatedGasLimit = await estimate(...args, { value })
-    const estimatedGasLimit = ethers.utils.bigNumberify(4000000)
-    console.log('estimatedGasLimit:' + estimatedGasLimit)
-    method(...args, { value, gasLimit: calculateGasMargin(estimatedGasLimit, GAS_MARGIN) }).then(response => {
+    let estimatedGasLimit = await estimate(...args, { value })
+	estimatedGasLimit = calculateGasMargin(estimatedGasLimit, GAS_MARGIN) 
+	if (estimatedGasLimit > 5000000){
+		estimatedGasLimit = 5000000
+	}
+   // const estimatedGasLimit = ethers.utils.bigNumberify(4000000)
+   // console.log('estimatedGasLimit:' + estimatedGasLimit)
+    method(...args, { value, gasLimit: estimatedGasLimit }).then(response => {
       addTransaction(response)
     })
   }
