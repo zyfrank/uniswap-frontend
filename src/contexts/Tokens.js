@@ -79,7 +79,7 @@ const INITIAL_TOKENS_CONTEXT = {
     },
     '0x06eb70653FDf56E5A0dc5D48602A11C175515Cb5': {
       [NAME]: 'Synthetix Synth sTRX Token',
-      [SYMBOL]: 'sTRK',
+      [SYMBOL]: 'sTRX',
       [DECIMALS]: 18
     },
     '0x548c18a49a66Ad1238e17824C18B0b9Be35fB604': {
