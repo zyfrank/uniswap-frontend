@@ -222,6 +222,18 @@ export function useTokenDetails(tokenAddress) {
   return { name, symbol, decimals }
 }
 
+export function useSethAddress() {
+  const { networkId } = useWeb3Context()
+
+  const [state] = useTokensContext()
+  const tokenDetails = { ...ETH, ...(safeAccess(state, [networkId]) || {}) }
+
+  return Object.entries(tokenDetails)
+        .filter(
+	        item => item[1][SYMBOL] === 'sETH'
+        )[0][0]
+}
+
 export function useAllTokenDetails() {
   const { networkId } = useWeb3Context()
 

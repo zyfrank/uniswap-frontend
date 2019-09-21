@@ -15,7 +15,7 @@ import TransactionDetails from "../TransactionDetails";
 import ArrowDown from "../../assets/svg/SVGArrowDown";
 import { amountFormatter, calculateGasMargin } from "../../utils";
 import { useAtomicSynthetixUniswapConverterContract } from "../../hooks";
-import { useTokenDetails } from "../../contexts/Tokens";
+import { useTokenDetails, useSethAddress } from "../../contexts/Tokens";
 import { useTransactionAdder } from "../../contexts/Transactions";
 import { useAddressBalance } from "../../contexts/Balances";
 import { useFetchAllBalances } from "../../contexts/AllBalances";
@@ -360,11 +360,11 @@ export default function ExchangePage({ initialCurrency, sending }) {
   );
 
   // fetch reserves for SETH
-  //const { reserveETH, reserveToken} = useExchangeReserves(SETH_UNISWAP_EXCHANGE_ADDR)
+  const sEthAddress = useSethAddress();
   const reserveETH = useAddressBalance(SETH_UNISWAP_EXCHANGE_ADDR, "ETH");
   const reserveToken = useAddressBalance(
     SETH_UNISWAP_EXCHANGE_ADDR,
-    "0x3731ab0E9FeEE3Ef0C427E874265E8F9a9111e27"
+    sEthAddress
   );
 
   // get balances for each of the currency types
