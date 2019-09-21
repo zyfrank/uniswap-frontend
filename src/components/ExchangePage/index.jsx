@@ -507,6 +507,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
         const srcBytes32 = ethers.utils.formatBytes32String(inputSymbol);
         const dstBytes32 = ethers.utils.formatBytes32String(outputSymbol);
         let method, args;
+        let updateDependentAsync = false;
         if (independentField === INPUT) {
           method = atomicConverterContract.inputPrice;
           args = [srcBytes32, amount, dstBytes32];
@@ -517,6 +518,10 @@ export default function ExchangePage({ initialCurrency, sending }) {
               reserveETH,
               reserveToken
             );
+            if (swapType === ETH_TO_OTHERSTOKEN) {
+              updateDependentAsync = true;
+              args = [sEthBytes32, slippageOutput, dstBytes32];
+            }
           } else if (swapType === SETH_TO_ETH) {
             slippageOutput = calculateEtherSethOutputFromInput(
               amount,
@@ -529,7 +534,14 @@ export default function ExchangePage({ initialCurrency, sending }) {
               type: "UPDATE_SLIPPAGE",
               payload: { slippageInput: amount, slippageOutput: slippageOutput }
             });
+            if (updateDependentAsync === false) {
+              dispatchSwapState({
+                type: "UPDATE_DEPENDENT",
+                payload: slippageOutput
+              });
+            }
           } else if (swapType === OTHERSTOKEN_TO_ETH) {
+            updateDependentAsync = true;
             method(srcBytes32, amount, sEthBytes32).then(res1 => {
               const sEthAmt = ethers.utils.bigNumberify(res1);
               if (sEthAmt.lte(ethers.constants.Zero)) {
@@ -549,6 +561,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
               });
             });
           } else if (swapType === STOKEN_TO_STOKEN) {
+            updateDependentAsync = true;
             dispatchSwapState({ type: "UPDATE_SLIPPAGE", payload: "" });
           }
         } else {
@@ -570,13 +583,24 @@ export default function ExchangePage({ initialCurrency, sending }) {
               reserveToken,
               reserveETH
             );
+            if (swapType === OTHERSTOKEN_TO_ETH) {
+              args = [srcBytes32, sEthBytes32, slippageInput];
+              updateDependentAsync = true;
+            }
           }
           if (slippageInput) {
             dispatchSwapState({
               type: "UPDATE_SLIPPAGE",
               payload: { slippageInput: slippageInput, slippageOutput: amount }
             });
+            if (updateDependentAsync === false) {
+              dispatchSwapState({
+                type: "UPDATE_DEPENDENT",
+                payload: slippageInput
+              });
+            }
           } else if (swapType === ETH_TO_OTHERSTOKEN) {
+            updateDependentAsync = true;
             method(sEthBytes32, dstBytes32, amount).then(res1 => {
               const sEthAmt = ethers.utils.bigNumberify(res1);
               if (sEthAmt.lte(ethers.constants.Zero)) {
@@ -596,16 +620,19 @@ export default function ExchangePage({ initialCurrency, sending }) {
               });
             });
           } else if (swapType === STOKEN_TO_STOKEN) {
+            updateDependentAsync = true;
             dispatchSwapState({ type: "UPDATE_SLIPPAGE", payload: "" });
           }
         }
-        method(...args).then(response => {
-          const resultAmt = ethers.utils.bigNumberify(response);
-          if (resultAmt.lte(ethers.constants.Zero)) {
-            throw Error();
-          }
-          dispatchSwapState({ type: "UPDATE_DEPENDENT", payload: resultAmt });
-        });
+        if (updateDependentAsync === true) {
+          method(...args).then(response => {
+            const resultAmt = ethers.utils.bigNumberify(response);
+            if (resultAmt.lte(ethers.constants.Zero)) {
+              throw Error();
+            }
+            dispatchSwapState({ type: "UPDATE_DEPENDENT", payload: resultAmt });
+          });
+        }
       } catch {
         setIndependentError(t("insufficientLiquidity"));
       }
