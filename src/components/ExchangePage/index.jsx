@@ -120,6 +120,21 @@ function getSwapType(inputCurrency, outputCurrency) {
   }
 }
 
+// this mocks the getInputPrice function, and calculates the required output
+function calculateEtherSethOutputFromInput(inputAmount, inputReserve, outputReserve) {
+  const inputAmountWithFee = inputAmount.mul(ethers.utils.bigNumberify(997))
+  const numerator = inputAmountWithFee.mul(outputReserve)
+  const denominator = inputReserve.mul(ethers.utils.bigNumberify(1000)).add(inputAmountWithFee)
+  return numerator.div(denominator)
+}
+
+// this mocks the getOutputPrice function, and calculates the required input
+function calculateEtherSethInputFromOutput(outputAmount, inputReserve, outputReserve) {
+  const numerator = inputReserve.mul(outputAmount).mul(ethers.utils.bigNumberify(1000))
+  const denominator = outputReserve.sub(outputAmount).mul(ethers.utils.bigNumberify(997))
+  return numerator.div(denominator).add(ethers.constants.One)
+}
+
 function getInitialSwapState(outputCurrency) {
   return {
     independentValue: '', // this is a user input
@@ -179,10 +194,11 @@ function swapStateReducer(state, action) {
         dependentValue: action.payload
       }
     }
-    case 'UPDATE_DEPENDENT_RATE': {
+    case 'UPDATE_SLIPPAGE': {
       return {
         ...state,
-        dependentEthSethRate: action.payload
+		slippageInputValue: action.payload.slippageInput,
+		slippageOutputValue: action.payload.slippageOutput,
       }
     }
     default: {
@@ -253,7 +269,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
     independentField,
     inputCurrency,
     outputCurrency,
-    dependentEthSethRate
+	slippageInputValue,
+	slippageOutputValue,
   } = swapState
 
   const [recipient, setRecipient] = useState({ address: '', name: '' })
@@ -355,32 +372,63 @@ export default function ExchangePage({ initialCurrency, sending }) {
     }
   }, [independentField, independentValueParsed, dependentValueMaximum, inputBalance, inputCurrency, inputAllowance, t])
 
+
   // calculate dependent value
   useEffect(() => {
     const amount = independentValueParsed
-
+	if (amount && reserveETH && reserveToken){
     try {
-      const ethBytes32 = ethers.utils.formatBytes32String('ETH')
       const sEthBytes32 = ethers.utils.formatBytes32String('sETH')
       const srcBytes32 = ethers.utils.formatBytes32String(inputSymbol)
       const dstBytes32 = ethers.utils.formatBytes32String(outputSymbol)
-      let method, args, args2
+      let method, args
       if (independentField === INPUT) {
         method = atomicConverterContract.inputPrice
         args = [srcBytes32, amount, dstBytes32]
-        if (inputSymbol === 'ETH') {
-          args2 = [ethBytes32, amount, sEthBytes32]
-        } else if (inputSymbol === 'sETH') {
-          args2 = [sEthBytes32, amount, ethBytes32]
+		let slippageOutput
+        if ((swapType === ETH_TO_SETH) || (swapType === ETH_TO_OTHERSTOKEN)) {
+		  slippageOutput = calculateEtherSethOutputFromInput(amount, reserveETH, reserveToken)
+        } else if ((swapType === SETH_TO_ETH)) {
+		  slippageOutput = calculateEtherSethOutputFromInput(amount, reserveToken, reserveETH)
         }
+		if (slippageOutput){
+            dispatchSwapState({ type: 'UPDATE_SLIPPAGE', payload: {"slippageInput":amount, "slippageOutput":slippageOutput} })
+		}else if (swapType === OTHERSTOKEN_TO_ETH){
+			method(srcBytes32, amount, sEthBytes32).then(res1 =>{
+			    const sEthAmt = ethers.utils.bigNumberify(res1)
+                if (sEthAmt.lte(ethers.constants.Zero)) {
+                    throw Error()
+                }
+                const slippageOutput2 = calculateEtherSethOutputFromInput(sEthAmt, reserveToken, reserveETH)
+				dispatchSwapState({ type: 'UPDATE_SLIPPAGE', payload: {"slippageInput":sEthAmt, "slippageOutput":slippageOutput2} })
+			})
+		}else if (swapType === STOKEN_TO_STOKEN){
+			dispatchSwapState({ type: 'UPDATE_SLIPPAGE', payload: '' })
+		}
+
       } else {
         method = atomicConverterContract.outputPrice
         args = [srcBytes32, dstBytes32, amount]
-        if (inputSymbol === 'ETH') {
-          args2 = [ethBytes32, sEthBytes32, amount]
-        } else if (inputSymbol === 'sETH') {
-          args2 = [sEthBytes32, ethBytes32, amount]
+        let slippageInput
+         if (swapType === ETH_TO_SETH)  {
+		  slippageInput = calculateEtherSethInputFromOutput(amount, reserveETH, reserveToken)
+        } else if ((swapType === SETH_TO_ETH) || (swapType === OTHERSTOKEN_TO_ETH)) {
+		  slippageInput = calculateEtherSethInputFromOutput(amount, reserveToken, reserveETH)
         }
+		if (slippageInput){
+			dispatchSwapState({ type: 'UPDATE_SLIPPAGE', payload: {"slippageInput":slippageInput, "slippageOutput":amount} })
+		}else if (swapType === ETH_TO_OTHERSTOKEN){
+			method(sEthBytes32, dstBytes32, amount).then(res1 =>{
+			    const sEthAmt = ethers.utils.bigNumberify(res1)
+                if (sEthAmt.lte(ethers.constants.Zero)) {
+                    throw Error()
+                }
+				const slippageInput2 = calculateEtherSethInputFromOutput(sEthAmt, reserveETH, reserveToken)
+				dispatchSwapState({ type: 'UPDATE_SLIPPAGE', payload: {"slippageInput":slippageInput2, "slippageOutput":sEthAmt} })
+			})
+		}else if (swapType === STOKEN_TO_STOKEN){
+			dispatchSwapState({ type: 'UPDATE_SLIPPAGE', payload: '' })
+		}
       }
       method(...args).then(response => {
         const resultAmt = ethers.utils.bigNumberify(response)
@@ -389,40 +437,24 @@ export default function ExchangePage({ initialCurrency, sending }) {
         }
         dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: resultAmt })
       })
-      if (args2) {
-        method(...args2).then(response => {
-          const resultAmt = ethers.utils.bigNumberify(response)
-          if (resultAmt.lte(ethers.constants.Zero)) {
-            throw Error()
-          }
-          dispatchSwapState({ type: 'UPDATE_DEPENDENT_RATE', payload: resultAmt })
-        })
-      }
     } catch {
       setIndependentError(t('insufficientLiquidity'))
     }
+	}
     return () => {
       dispatchSwapState({ type: 'UPDATE_DEPENDENT', payload: '' })
+	  dispatchSwapState({ type: 'UPDATE_SLIPPAGE', payload: '' })
     }
-  }, [independentValueParsed, swapType, independentField, inputSymbol, outputSymbol, atomicConverterContract, t])
+  }, [independentValueParsed, swapType, independentField, inputSymbol, outputSymbol, reserveETH, reserveToken, atomicConverterContract, t])
 
   const [inverted, setInverted] = useState(false)
-  const ethSethExchangeRate = getExchangeRate(inputValueParsed, inputDecimals, dependentEthSethRate, outputDecimals)
+  const ethSethExchangeRate = getExchangeRate(slippageInputValue, 18, slippageOutputValue, 18)
   const exchangeRate = getExchangeRate(inputValueParsed, inputDecimals, outputValueParsed, outputDecimals)
 
   const exchangeRateInverted = getExchangeRate(inputValueParsed, inputDecimals, outputValueParsed, outputDecimals, true)
 
   const marketRate = getMarketRate(swapType, reserveETH, reserveToken)
 
-  /*
-  console.log("dependentEthSethRate:           " + dependentEthSethRate)
-  console.log("independentValue    :           " + independentValueParsed)
-  console.log("dependentValue:                 " + dependentValue)
-  console.log("exchangeRate:                   "+exchangeRate)
-  console.log("exchangeRateInvert:             "+exchangeRateInverted)
-  console.log("exchanethSethExchangeRategeRate:"+ethSethExchangeRate)
-  console.log("marketRate:                     " + marketRate)
-  */
   const percentSlippage =
     ethSethExchangeRate && marketRate
       ? ethSethExchangeRate
@@ -551,8 +583,6 @@ export default function ExchangePage({ initialCurrency, sending }) {
 	if (estimatedGasLimit > 5000000){
 		estimatedGasLimit = 5000000
 	}
-   // const estimatedGasLimit = ethers.utils.bigNumberify(4000000)
-   // console.log('estimatedGasLimit:' + estimatedGasLimit)
     method(...args, { value, gasLimit: estimatedGasLimit }).then(response => {
       addTransaction(response)
     })
