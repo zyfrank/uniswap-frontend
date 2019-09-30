@@ -14,7 +14,7 @@ import { ReactComponent as Plus } from '../../assets/images/plus-blue.svg'
 import { useExchangeContract } from '../../hooks'
 import { amountFormatter, calculateGasMargin } from '../../utils'
 import { useTransactionAdder } from '../../contexts/Transactions'
-import { useTokenDetails } from '../../contexts/Tokens'
+import { useTokenDetailsForLiquidity, useAllTokenDetailsForLiquidity} from '../../contexts/Tokens'
 import { useFetchAllBalances } from '../../contexts/AllBalances'
 import { useAddressBalance, useExchangeReserves } from '../../contexts/Balances'
 import { useAddressAllowance } from '../../contexts/Allowances'
@@ -202,7 +202,7 @@ export default function AddLiquidity() {
   const [inputError, setInputError] = useState()
   const [outputError, setOutputError] = useState()
 
-  const { symbol, decimals, exchangeAddress } = useTokenDetails(outputCurrency)
+  const { symbol, decimals, exchangeAddress } = useTokenDetailsForLiquidity(outputCurrency)
   const exchangeContract = useExchangeContract(exchangeAddress)
 
   const [totalPoolTokens, setTotalPoolTokens] = useState()
@@ -554,6 +554,8 @@ export default function AddLiquidity() {
       <CurrencyInputPanel
         title={t('deposit')}
         allBalances={allBalances}
+        useTokenDetails={useTokenDetailsForLiquidity}
+        useAllTokenDetails={useAllTokenDetailsForLiquidity}
         extraText={inputBalance && formatBalance(amountFormatter(inputBalance, 18, 4))}
         onValueChange={inputValue => {
           dispatchAddLiquidityState({ type: 'UPDATE_VALUE', payload: { value: inputValue, field: INPUT } })
@@ -571,6 +573,8 @@ export default function AddLiquidity() {
       <CurrencyInputPanel
         title={t('deposit')}
         allBalances={allBalances}
+        useTokenDetails={useTokenDetailsForLiquidity}
+        useAllTokenDetails={useAllTokenDetailsForLiquidity}
         description={isNewExchange ? '' : outputValue ? `(${t('estimated')})` : ''}
         extraText={outputBalance && formatBalance(amountFormatter(outputBalance, decimals, Math.min(decimals, 4)))}
         selectedTokenAddress={outputCurrency}

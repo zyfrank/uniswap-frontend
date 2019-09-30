@@ -15,7 +15,7 @@ import TransactionDetails from "../TransactionDetails";
 import ArrowDown from "../../assets/svg/SVGArrowDown";
 import { amountFormatter, calculateGasMargin } from "../../utils";
 import { useAtomicSynthetixUniswapConverterContract } from "../../hooks";
-import { useTokenDetails, useSethAddress } from "../../contexts/Tokens";
+import { useTokenDetails, useAllTokenDetails, useSethAddress } from "../../contexts/Tokens";
 import { useTransactionAdder } from "../../contexts/Transactions";
 import { useAddressBalance } from "../../contexts/Balances";
 import { useFetchAllBalances } from "../../contexts/AllBalances";
@@ -892,12 +892,11 @@ export default function ExchangePage({ initialCurrency, sending }) {
         value = ethers.constants.Zero;
       }
     }
-
-    let estimatedGasLimit = await estimate(...args, { value });
-    estimatedGasLimit = calculateGasMargin(estimatedGasLimit, GAS_MARGIN);
-    if (estimatedGasLimit > 5000000) {
-      estimatedGasLimit = 5000000;
-    }
+    let estimatedGasLimit = 1000000;
+    try {
+      estimatedGasLimit = await estimate(...args, { value });
+      estimatedGasLimit = calculateGasMargin(estimatedGasLimit, GAS_MARGIN);
+    }catch{}
     method(...args, { value, gasLimit: estimatedGasLimit }).then(response => {
       addTransaction(response);
     });
@@ -912,6 +911,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
       <CurrencyInputPanel
         title={t("input")}
         allBalances={allBalances}
+        useTokenDetails={useTokenDetails}
+        useAllTokenDetails={useAllTokenDetails}
         description={
           inputValueFormatted && independentField === OUTPUT
             ? estimatedText
@@ -981,6 +982,8 @@ export default function ExchangePage({ initialCurrency, sending }) {
       <CurrencyInputPanel
         title={t("output")}
         allBalances={allBalances}
+        useTokenDetails={useTokenDetails}
+        useAllTokenDetails={useAllTokenDetails}
         description={
           outputValueFormatted && independentField === INPUT
             ? estimatedText
