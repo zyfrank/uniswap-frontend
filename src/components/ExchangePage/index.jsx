@@ -1,5 +1,6 @@
 import React, { useState, useReducer, useEffect } from "react";
 import ReactGA from "react-ga";
+import { createBrowserHistory } from 'history'
 
 import { useTranslation } from "react-i18next";
 import { useWeb3Context } from "web3-react";
@@ -166,14 +167,18 @@ function calculateEtherSethInputFromOutput(
   return numerator.div(denominator).add(ethers.constants.One);
 }
 
-function getInitialSwapState(outputCurrency) {
+function getInitialSwapState(state) {
   return {
-    independentValue: "", // this is a user input
-    dependentValue: "", // this is a calculated number
-    independentField: INPUT,
-    inputCurrency: "ETH",
-    outputCurrency: outputCurrency ? outputCurrency : ""
-  };
+    independentValue: state.exactFieldURL && state.exactAmountURL ? state.exactAmountURL : '', // this is a user input
+    dependentValue: '', // this is a calculated number
+    independentField: state.exactFieldURL === 'output' ? OUTPUT : INPUT,
+    inputCurrency: state.inputCurrencyURL ? state.inputCurrencyURL : 'ETH',
+    outputCurrency: state.outputCurrencyURL
+      ? state.outputCurrencyURL
+      : state.initialCurrency
+      ? state.initialCurrency
+      : ''
+  }
 }
 
 function swapStateReducer(state, action) {
@@ -298,16 +303,32 @@ function getMarketRate(swapType, reserveETH, reserveSEthToken, invert = false) {
   return undefined;
 }
 
-export default function ExchangePage({ initialCurrency, sending }) {
-  const { t } = useTranslation();
-  const { account } = useWeb3Context();
+export default function ExchangePage({ initialCurrency, sending = false, params }) {
+  const { t } = useTranslation()
+  const { account } = useWeb3Context()
 
   const addTransaction = useTransactionAdder();
 
-  const [rawSlippage, setRawSlippage] = useState(ALLOWED_SLIPPAGE_DEFAULT);
-  const [rawTokenSlippage, setRawTokenSlippage] = useState(
-    TOKEN_ALLOWED_SLIPPAGE_DEFAULT
-  );
+  // check if URL specifies valid slippage, if so use as default
+  const initialSlippage = (token = false) => {
+    let slippage = Number.parseInt(params.slippage)
+    if (!isNaN(slippage) && (slippage === 0 || slippage >= 1)) {
+      return slippage // round to match custom input availability
+    }
+    // check for token <-> token slippage option
+    return token ? TOKEN_ALLOWED_SLIPPAGE_DEFAULT : ALLOWED_SLIPPAGE_DEFAULT
+  }
+
+  // check URL params for recipient, only on send page
+  const initialRecipient = () => {
+    if (sending && params.recipient) {
+      return params.recipient
+    }
+    return ''
+  }
+
+  const [rawSlippage, setRawSlippage] = useState(() => initialSlippage())
+  const [rawTokenSlippage, setRawTokenSlippage] = useState(() => initialSlippage(true))
 
   const allowedSlippageBig = ethers.utils.bigNumberify(rawSlippage);
   const tokenAllowedSlippageBig = ethers.utils.bigNumberify(rawTokenSlippage);
@@ -320,22 +341,23 @@ export default function ExchangePage({ initialCurrency, sending }) {
   // core swap state
   const [swapState, dispatchSwapState] = useReducer(
     swapStateReducer,
-    initialCurrency,
+    {
+      initialCurrency: initialCurrency,
+      inputCurrencyURL: params.inputCurrency,
+      outputCurrencyURL: params.outputCurrency,
+      exactFieldURL: params.exactField,
+      exactAmountURL: params.exactAmount
+    },
     getInitialSwapState
-  );
+  )
 
-  const {
-    independentValue,
-    dependentValue,
-    independentField,
-    inputCurrency,
-    outputCurrency,
-    slippageInputValue,
-    slippageOutputValue
-  } = swapState;
+  const { independentValue, dependentValue, independentField, inputCurrency, outputCurrency, slippageInputValue, slippageOutputValue } = swapState
 
-  const [recipient, setRecipient] = useState({ address: "", name: "" });
-  const [recipientError, setRecipientError] = useState();
+  const [recipient, setRecipient] = useState({ address: initialRecipient(), name: '' })
+  const [recipientError, setRecipientError] = useState()
+
+  // get swap type from the currency types
+  const swapType = getSwapType(inputCurrency, outputCurrency)
 
   // get decimals and exchange address for each of the currency types
   const { symbol: inputSymbol, decimals: inputDecimals } = useTokenDetails(
@@ -344,9 +366,6 @@ export default function ExchangePage({ initialCurrency, sending }) {
   const { symbol: outputSymbol, decimals: outputDecimals } = useTokenDetails(
     outputCurrency
   );
-
-  // get swap type from the currency types
-  const swapType = getSwapType(inputSymbol, outputSymbol);
 
   const atomicConverterContract = useAtomicSynthetixUniswapConverterContract(
     ATOMIC_CONVERT_ADDR
@@ -653,6 +672,11 @@ export default function ExchangePage({ initialCurrency, sending }) {
     t
   ]);
 
+  useEffect(() => {
+    const history = createBrowserHistory()
+    history.push(window.location.pathname + '')
+  }, [])
+  
   const [inverted, setInverted] = useState(false);
   const ethSethExchangeRate = getExchangeRate(
     slippageInputValue,
@@ -1017,10 +1041,7 @@ export default function ExchangePage({ initialCurrency, sending }) {
               <DownArrow active={isValid} alt="arrow" />
             </DownArrowBackground>
           </OversizedPanel>
-          <AddressInputPanel
-            onChange={setRecipient}
-            onError={setRecipientError}
-          />
+          <AddressInputPanel onChange={setRecipient} onError={setRecipientError} initialInput={recipient} />
         </>
       ) : (
         ""
