@@ -356,9 +356,6 @@ export default function ExchangePage({ initialCurrency, sending = false, params 
   const [recipient, setRecipient] = useState({ address: initialRecipient(), name: '' })
   const [recipientError, setRecipientError] = useState()
 
-  // get swap type from the currency types
-  const swapType = getSwapType(inputCurrency, outputCurrency)
-
   // get decimals and exchange address for each of the currency types
   const { symbol: inputSymbol, decimals: inputDecimals } = useTokenDetails(
     inputCurrency
@@ -366,6 +363,9 @@ export default function ExchangePage({ initialCurrency, sending = false, params 
   const { symbol: outputSymbol, decimals: outputDecimals } = useTokenDetails(
     outputCurrency
   );
+
+  // get swap type from the currency types
+  const swapType = getSwapType(inputSymbol, outputSymbol)
 
   const atomicConverterContract = useAtomicSynthetixUniswapConverterContract(
     ATOMIC_CONVERT_ADDR
@@ -525,6 +525,7 @@ export default function ExchangePage({ initialCurrency, sending = false, params 
         const sEthBytes32 = ethers.utils.formatBytes32String("sETH");
         const srcBytes32 = ethers.utils.formatBytes32String(inputSymbol);
         const dstBytes32 = ethers.utils.formatBytes32String(outputSymbol);
+
         let method, args;
         let updateDependentAsync = false;
         if (independentField === INPUT) {

@@ -238,7 +238,6 @@ export default function AddLiquidity({ params }) {
   const poolTokenBalance = useAddressBalance(account, exchangeAddress)
   const exchangeETHBalance = useAddressBalance(exchangeAddress, 'ETH')
   const exchangeTokenBalance = useAddressBalance(exchangeAddress, outputCurrency)
-
   const { reserveETH, reserveToken } = useExchangeReserves(outputCurrency)
   const isNewExchange = !!(reserveETH && reserveToken && reserveETH.isZero() && reserveToken.isZero())
 
