@@ -6,3 +6,8 @@ export const FACTORY_ADDRESSES = {
 }
 export const ATOMIC_CONVERT_ADDR = '0xdf7964befd6c06c854220e2bcad124dba9743c04'
 export const SETH_UNISWAP_EXCHANGE_ADDR = '0x01e165a24b6c7dc2183d42891e529cc298d704af'
+
+export const SUPPORTED_THEMES = {
+  DARK: 'DARK',
+  LIGHT: 'LIGHT'
+}
